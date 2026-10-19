@@ -45,6 +45,8 @@ button{font:inherit;color:inherit}
 .stat .unit{color:var(--muted);font-family:var(--f-pix)}
 .iconbtn{width:42px;height:42px;border:0;cursor:pointer;background:var(--panel);font-size:20px;box-shadow:0 0 0 3px var(--edge),inset 3px 3px 0 var(--panel-hi),inset -3px -3px 0 var(--panel-lo)}
 .iconbtn[aria-pressed="true"]{color:var(--dim)}
+a.iconbtn{display:grid;place-items:center;color:var(--text);text-decoration:none}
+.hbtns{display:flex;gap:12px}
 
 main{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:22px;min-height:0}
 
@@ -192,7 +194,7 @@ h3:first-child{margin-top:0}
   .brand{width:100%}
   .stats{width:100%}
   .stat{flex:1;justify-content:center}
-  .iconbtn{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
+  .hbtns{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
   .skills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .skill{grid-template-columns:auto;justify-items:center;text-align:center;padding:6px 4px}
   .skill canvas{grid-row:auto;width:24px;height:24px}
@@ -223,7 +225,10 @@ h3:first-child{margin-top:0}
       <div class="stat gold" title="골드"><span id="coinIco" class="pixicon"></span><b id="gold">0</b></div>
       <div class="stat"><span class="lbl">깊이</span><b id="depth">0</b><span class="unit">m</span></div>
     </div>
-    <button id="mute" class="iconbtn" aria-label="소리 켜고 끄기" aria-pressed="false">♪</button>
+    <div class="hbtns">
+      <a id="home" class="iconbtn" href="../" aria-label="처음 화면으로" title="처음 화면으로">⌂</a>
+      <button id="mute" class="iconbtn" aria-label="소리 켜고 끄기" aria-pressed="false">♪</button>
+    </div>
   </header>
 
   <main>
@@ -249,6 +254,7 @@ h3:first-child{margin-top:0}
         <span>클릭 피해 <b id="sClick">1</b></span>
         <span>초당 피해 <b id="sDps">0</b></span>
         <span id="sCritWrap" hidden>치명타 <b id="sCrit">0%</b></span>
+        <span>초당 골드 <b id="sGps">0</b></span>
         <span>최고 기록 <b id="sMax">0</b>m</span>
       </div>
     </section>
@@ -516,6 +522,7 @@ const ACH=[
  ['nug','금맥 사냥꾼','반짝이는 금맥 10개 잡기',()=>S.nuggets>=10,'sun','#f6c64b'],
  ['crit','급소 찌르기','치명타 500번',()=>S.crits>=500,'diamond','#ff7a4a'],
  ['combo','불타는 손','콤보 게이지를 끝까지 채우기',()=>S.maxCombo>=1,'heart','#ff7a4a'],
+ ['fever','피버 타임!','피버 타임 5번 발동',()=>S.fevers>=5,'sun','#ff7a4a'],
  ['chest','보물 사냥꾼','보물 상자 10개 열기',()=>S.chests>=10,'tablet','#c07a3a'],
  ['quake','땅을 흔드는 자','지진 스킬 10번 쓰기',()=>S.quakes>=10,'flake','#c9b48a'],
  ['rel5','수집가','유물 5개 모으기',()=>Object.keys(S.relics).length>=5,'ring','#b07cff'],
@@ -535,9 +542,11 @@ const crystalGain=()=>S.runMax<100?0:Math.floor(Math.pow((S.runMax-80)/5,1.6));
 /* ---------- state ---------- */
 let S=null;
 const D={};
-const buffs={frenzy:0,rush:0,midas:0,stop:0};
+const buffs={frenzy:0,rush:0,midas:0,stop:0,fever:0};
+// 콤보 MAX 상태로 FEVER_HITS번 더 치면 피버 타임
+const FEVER_HITS=20,FEVER_DUR=8;
 function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,buyAmt:1,
-  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,last:Date.now()};}
+  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,last:Date.now()};}
 
 function recalc(){
   const r={click:0,dps:0,gold:0,crit:0,boss:0,luck:0};
@@ -549,7 +558,7 @@ function recalc(){
   const ach=1+ACH_BONUS*ACH.filter(a=>S.ach[a.id]).length;
   D.helperDps=HELPERS.map((h,i)=>{const l=S.helpers[i];let m=Math.pow(2,msCount(l));if(S.up['tr'+i])m*=2;if(S.up['el'+i])m*=3;return h.p*l*m*(1+r.dps)*cry*ach*rush;});
   D.dps=D.helperDps.reduce((a,b)=>a+b,0);
-  D.click=(pick*(1+r.click)*cry*ach+D.dps*glove)*(buffs.frenzy>0?7:1);
+  D.click=(pick*(1+r.click)*cry*ach+D.dps*glove)*(buffs.frenzy>0?7:1)*(buffs.fever>0?3:1);
   D.critChance=(S.up.clover?.08:0)+r.crit;
   D.critMult=S.up.eye?12:6;
   D.goldMult=(1+r.gold)*(S.up.map1?1.5:1)*(S.up.map2?2:1)*(buffs.midas>0?3:1);
@@ -675,7 +684,7 @@ const sfx={
 };
 
 /* ---------- game runtime ---------- */
-let cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9;
+let cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
 const comboMult=()=>1+combo/100;
 const parts=[];
 const fx=$('#fx');
@@ -708,6 +717,10 @@ function hit(){
   ensureAudio();S.clicks++;
   combo=Math.min(100,combo+5);comboIdle=0;
   if(combo>=100&&!S.maxCombo)S.maxCombo=1;
+  if(combo>=100&&buffs.fever<=0&&++feverCharge>=FEVER_HITS){
+    feverCharge=0;buffs.fever=FEVER_DUR;S.fevers++;recalc();sfx.win();
+    banner('피버 타임!',`${FEVER_DUR}초 동안 클릭 피해 ×3`);
+  }
   let dmg=D.click*comboMult(),crit=false;
   if(D.critChance>0&&Math.random()<D.critChance){dmg*=D.critMult;crit=true;S.crits++;}
   swing=.09;shakeT=.07;
@@ -794,7 +807,8 @@ function update(dt){
   if(cur&&cur.type==='boss'&&buffs.stop<=0){bossLeft-=dt;if(bossLeft<=0)bossFail();}
   if(S.farm){farmT+=dt;if(farmT>3&&D.dps*D.bossDur*.8>=hpOf(S.depth)*BAL.boss){farmT=0;retryBoss();toast('동료들이 충분히 강해졌어요. 보스에 다시 도전!','win');}}
   for(const k in S.cd)if(S.cd[k]>0)S.cd[k]=Math.max(0,S.cd[k]-dt);
-  comboIdle+=dt;if(comboIdle>.5&&combo>0)combo=Math.max(0,combo-35*dt);
+  comboIdle+=dt;if(comboIdle>.5&&combo>0&&buffs.fever<=0)combo=Math.max(0,combo-35*dt);
+  if(combo<100)feverCharge=0;
   quakeT-=dt;
   const target=S.depth*B;
   if(moleY<target){vy+=760*dt;moleY+=vy*dt;if(target-moleY>B*4)moleY=target-B*4;
@@ -913,6 +927,7 @@ function draw(t){
   if(vi>=0){ctx.globalAlpha=.7;ctx.drawImage(VIG[vi],0,0);ctx.globalAlpha=1;}
   if(flash>0){ctx.globalAlpha=Math.min(1,flash);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
   if(buffs.midas>0){ctx.globalAlpha=.1+.05*Math.sin(t*5);ctx.fillStyle='#f6c64b';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
+  if(buffs.fever>0){ctx.globalAlpha=.12+.08*Math.sin(t*14);ctx.fillStyle='#ff5a2a';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
   if(buffs.stop>0){ctx.globalAlpha=.16;ctx.fillStyle='#8fd0ff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
   ctx.setTransform(1,0,0,1,0,0);
 }
@@ -938,12 +953,13 @@ function updateHud(){
   }
   $('#retry').hidden=!S.farm;
   setText('nextboss',S.farm?'보스 재도전 대기 중':cur&&cur.type==='boss'?'보스전!':`보스까지 ${25-(S.depth%25)}m`);
-  setText('sClick',fmt(D.click));setText('sDps',fmt(D.dps));setText('sMax',String(S.maxDepth));
+  setText('sClick',fmt(D.click));setText('sDps',fmt(D.dps));setText('sMax',String(S.maxDepth));setText('sGps',fmt(incomePerSec()));
   $('#sCritWrap').hidden=D.critChance<=0;setText('sCrit',Math.round(D.critChance*100)+'%');
   const bf=[];if(buffs.frenzy>0)bf.push(`곡괭이 광란 ×7 · ${Math.ceil(buffs.frenzy)}초`);if(buffs.rush>0)bf.push(`동료의 열정 ×5 · ${Math.ceil(buffs.rush)}초`);
   if(buffs.midas>0)bf.push(`황금 손 골드 ×3 · ${Math.ceil(buffs.midas)}초`);if(buffs.stop>0)bf.push(`시간 정지 · ${Math.ceil(buffs.stop)}초`);
+  if(buffs.fever>0)bf.push(`피버 타임 클릭 ×3 · ${Math.ceil(buffs.fever)}초`);
   $('#combo').hidden=combo<1;
-  if(combo>=1){setText('comboT',`콤보 ×${comboMult().toFixed(2)}`);$('#comboFill').style.width=combo+'%';$('#combo').classList.toggle('max',combo>=100);}
+  if(combo>=1){setText('comboT',buffs.fever>0?`피버! ×${comboMult().toFixed(2)}`:combo>=100?`콤보 MAX · 피버 ${feverCharge}/${FEVER_HITS}`:`콤보 ×${comboMult().toFixed(2)}`);$('#comboFill').style.width=combo+'%';$('#combo').classList.toggle('max',combo>=100);}
   updateSkills();
   const key=bf.join('|');if(lastHud.buffs!==key){lastHud.buffs=key;$('#buffs').innerHTML='';bf.forEach(b=>{const s=document.createElement('span');s.textContent=b;$('#buffs').appendChild(s);});}
 }
