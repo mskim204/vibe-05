@@ -586,7 +586,7 @@ const ACH=[
 const ACH_BONUS=.02;
 const TYPEMULT={plain:1,ore:3,gem:12,chest:40,boss:12};
 // 밸런스 수치 (헤드리스 시뮬레이션으로 조정)
-const BAL={hp:8,hpGrow:1.14,gold:1,goldGrow:1.125,costGrow:1.15,cryPer:.1,boss:6};
+const BAL={hp:8,hpGrow:1.14,gold:1,goldGrow:1.125,costGrow:1.15,cryPer:.1,boss:6,qGold:5,qSec:20,qNeed:3,qRush:5};
 const hpOf=d=>Math.ceil(BAL.hp*Math.pow(BAL.hpGrow,d));
 const goldBase=d=>Math.ceil(BAL.gold*Math.pow(BAL.goldGrow,d));
 const goldOf=(d,type)=>goldBase(d)*TYPEMULT[type]*D.goldMult;
@@ -1057,7 +1057,7 @@ QUESTS.forEach(q=>{q.icon=shapeIcon(q.ic[0],q.ic[1]);});
 const qDef=k=>QUESTS.find(q=>q.k===k);
 function newQuest(){
   const used=S.quests.map(q=>q.k),pool=QUESTS.filter(q=>!used.includes(q.k)&&(!q.ok||q.ok()));
-  const d=pool[Math.random()*pool.length|0],f=1+Math.floor(S.maxDepth/40)*.5;
+  const d=pool[Math.random()*pool.length|0],f=(1+Math.floor(S.maxDepth/40)*.5)*BAL.qNeed;
   return {k:d.k,need:d.flat?d.n:Math.round(d.n*f),start:S[d.k]||0};
 }
 function ensureQuests(){
@@ -1067,12 +1067,12 @@ function ensureQuests(){
 }
 const questProg=q=>Math.max(0,(S[q.k]||0)-q.start);
 const questDone=q=>questProg(q)>=q.need;
-const questReward=()=>Math.max(goldOf(S.depth,'plain')*40,incomePerSec()*120);
+const questReward=()=>Math.max(goldOf(S.depth,'plain')*BAL.qGold,incomePerSec()*BAL.qSec);
 function claimQuest(i){
   const q=S.quests[i];if(!q||!questDone(q))return;
   ensureAudio();const g=questReward();addGold(g);S.questsDone++;
   S.quests.splice(i,1);S.quests.splice(i,0,newQuest());
-  let extra='';if(S.questsDone%3===0){buffs.rush=20;recalc();extra=' · 보너스! 20초 동안 초당 피해 ×5';}
+  let extra='';if(S.questsDone%BAL.qRush===0){buffs.rush=20;recalc();extra=' · 보너스! 20초 동안 초당 피해 ×5';}
   sfx.win();buzz(25);toast(`의뢰 완료! +${fmt(g)} 골드${extra}`,'win',qDef(q.k).icon);
   questSig='';updatePanel();
 }
@@ -1119,7 +1119,7 @@ function updateQuests(){
   qRows.forEach(r=>{const p=questProg(r.q),d=p>=r.q.need;
     r.fill.style.width=Math.min(100,p/r.q.need*100)+'%';r.meta.textContent=`${fmt(Math.min(p,r.q.need))} / ${fmt(r.q.need)}`;
     r.cost.textContent=rw;r.btn.disabled=!d;r.row.classList.toggle('done',d);});
-  $('#questFoot').textContent=`해결한 의뢰 ${S.questsDone}개 · 3개마다 동료의 열정 보너스`;
+  $('#questFoot').textContent=`해결한 의뢰 ${S.questsDone}개 · ${BAL.qRush}개마다 동료의 열정 보너스`;
 }
 
 
@@ -1613,7 +1613,7 @@ function start(data){
   if(S.depth===0&&S.clicks===0)banner('두더지 광산','0m · 표토층');
   setInterval(updateHud,100);setInterval(updatePanel,250);setInterval(save,15000);setInterval(checkAch,1000);
   if(window.__mmExpose)window.__mm={get S(){return S;},D,buffs,BAL,draw,update,hit,useSkill,buyHelper,costOf,maxBuy,recalc,crystalGain,UPS,HELPERS,
-    get cur(){return cur;},get combo(){return combo;},retryBoss,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
+    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
   updateHud();
   if(window.claude&&window.claude.hot&&window.claude.hot.snapshot)window.claude.hot.snapshot(serialize);
   last=performance.now();requestAnimationFrame(frame);
