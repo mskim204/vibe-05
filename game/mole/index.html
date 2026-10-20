@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#140e14">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="두더지 광산">
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><title>두더지 광산</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +27,7 @@
   --f-ko:'Do Hyeon','Silkscreen',system-ui,sans-serif;
   color-scheme:dark;
 }
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior-y:none}
 body{background:var(--bg);color:var(--text);font-family:var(--f-ko);font-size:16px;line-height:1.35;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -252,6 +260,7 @@ h3:first-child{margin-top:0}
       <div class="stat"><span class="lbl">깊이</span><b id="depth">0</b><span class="unit">m</span></div>
     </div>
     <div class="hbtns">
+      <button id="install" class="iconbtn" hidden aria-label="앱으로 설치" title="홈 화면에 앱으로 설치">📲</button>
       <a id="home" class="iconbtn" href="../../" aria-label="처음 화면으로" title="처음 화면으로">⌂</a>
       <button id="mute" class="iconbtn" aria-label="소리 켜고 끄기" aria-pressed="false">♪</button>
     </div>
@@ -1329,7 +1338,9 @@ function buildRebirth(){
   box.appendChild(el('h3',null,'설정'));
   const set=el('div','card');
   rb.reset=el('button','btn danger');rb.reset.id='resetBtn';rb.reset.addEventListener('click',onReset);
-  set.append(el('p',null,'게임은 이 브라우저에 자동 저장돼요. 창을 닫아 둔 동안에도 동료들이 최대 8시간까지 절반 속도로 캐요.'),rb.reset);
+  rb.inst=el('button','btn');rb.inst.id='installBtn';rb.inst.textContent='📲 홈 화면에 앱으로 설치';rb.inst.addEventListener('click',installApp);
+  rb.instP=el('p');
+  set.append(el('p',null,'게임은 이 브라우저에 자동 저장돼요. 창을 닫아 둔 동안에도 동료들이 최대 8시간까지 절반 속도로 캐요.'),rb.instP,rb.inst,rb.reset);
   box.appendChild(set);rebirthBuilt=true;
 }
 function updateRebirth(){
@@ -1340,6 +1351,7 @@ function updateRebirth(){
   rb.info.textContent=g>0?`지금 환생하면 결정 +${g}개 (이번 최고 ${S.runMax}m)`:`이번 최고 ${S.runMax}m · 100m까지 ${Math.max(0,100-S.runMax)}m 남았어요`;
   rb.btn.disabled=g<=0;
   rb.btn.textContent=now<confirmUntil?'한 번 더 누르면 환생해요':`새 땅에서 다시 파기 (+${g})`;
+  syncInstall();
   rb.reset.textContent=now<resetUntil?'정말 지울까요? 한 번 더 누르세요':'저장 기록 모두 지우기';
   const rows=[['총 클릭',fmt(S.clicks)],['캔 블록',fmt(S.blocks)],['모은 골드',fmt(S.totalGold)],['최고 깊이',S.maxDepth+'m'],['환생 횟수',String(S.prestiges)],['찾은 유물',`${RELICS.filter(r=>S.relics[r.id]).length} / ${RELICS.length}`]];
   const sig=rows.map(r=>r[1]).join('|');
@@ -1426,6 +1438,35 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('pagehide',save);
 
+
+/* ---------- install as an app (PWA) ---------- */
+let installEvt=null;
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function syncInstall(){
+  const can=!isStandalone()&&(!!installEvt||isIOS());
+  $('#install').hidden=!can;
+  $('#home').hidden=isStandalone();
+  if(rb.inst){rb.inst.hidden=!can;
+    rb.instP.textContent=isStandalone()?'지금 앱으로 실행 중이에요. 홈 화면 아이콘으로 언제든 바로 들어올 수 있어요.'
+      :can?'홈 화면에 설치하면 앱처럼 전체 화면으로 열리고, 인터넷이 끊겨도 플레이할 수 있어요.'
+      :'이 브라우저에서는 메뉴(⋮)의 "홈 화면에 추가" 또는 "앱 설치"로 설치할 수 있어요.';}
+}
+function installApp(){
+  ensureAudio();
+  if(installEvt){
+    const ev=installEvt;installEvt=null;ev.prompt();
+    ev.userChoice.then(r=>{if(r.outcome==='accepted'){sfx.win();toast('설치 완료! 홈 화면에서 두더지를 만나요.','win',SPR.mole);}syncInstall();});
+  }else if(isIOS()){
+    toast('Safari 아래쪽 공유 버튼(□↑)을 누르고 "홈 화면에 추가"를 고르세요.','win',SPR.mole);
+  }
+  syncInstall();
+}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;syncInstall();});
+addEventListener('appinstalled',()=>{installEvt=null;syncInstall();});
+$('#install').addEventListener('click',installApp);
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
 /* ---------- boot ---------- */
 SPR.crys=shapeIcon('crystal','#ff7ad9');
 let last=performance.now();
@@ -1443,6 +1484,7 @@ function start(data){
   S.ach=S.ach||{};S.cd=S.cd||{};
   ensureQuests();if(S.pendingBless)setTimeout(offerBless,800);
   buildHelpers();buildSkills();syncControls();setTab('helpers');
+  syncInstall();
   if(S.clicks>=5){hintLeft=0;$('#hint').hidden=true;}
   if(src&&src.last)offline((Date.now()-src.last)/1000,.5,'창을 닫아 둔');
   if(S.depth===0&&S.clicks===0)banner('두더지 광산','0m · 표토층');
