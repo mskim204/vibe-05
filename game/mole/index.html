@@ -606,7 +606,9 @@ const ACH=[
  ['weak30','급소 사냥꾼','보스 약점 30번 찌르기',()=>S.weakHits>=30,'eye','#ff3a2a'],
  ['fossil1','화석 발굴','첫 화석 얻기',()=>S.fossilsTotal>=1,'trilo','#c9b48a'],
  ['res10','연구소장','연구 레벨 합계 10',()=>Object.values(S.res).reduce((a,b)=>a+b,0)>=10,'tablet','#9fd8ff'],
- ['merch5','단골손님','떠돌이 상인에게 5번 사기',()=>S.merchBuys>=5,'coin','#4fb07a']
+ ['merch5','단골손님','떠돌이 상인에게 5번 사기',()=>S.merchBuys>=5,'coin','#4fb07a'],
+ ['proj30','철벽 방어','보스 투사체 30개 막기',()=>S.projBlocks>=30,'shield','#8fd0ff'],
+ ['dex12','보스 도감 완성','보스 12종류 모두 쓰러뜨리기',()=>Object.keys(S.bossLog).length>=12,'crown','#ff7a4a']
 ].map(a=>({id:a[0],name:a[1],desc:a[2],cond:a[3],icon:shapeIcon(a[4],a[5]),off:shapeIcon(a[4],a[5],true)}));
 const ACH_BONUS=.02;
 const TYPEMULT={plain:1,ore:3,gem:12,chest:40,boss:12};
@@ -624,7 +626,7 @@ const buffs={frenzy:0,rush:0,midas:0,stop:0,fever:0};
 // 콤보 MAX 상태로 FEVER_HITS번 더 치면 피버 타임
 const FEVER_HITS=20,FEVER_DUR=8;
 function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,sfxOff:false,musicOff:false,vibeOff:false,buyAmt:1,
-  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,last:Date.now()};}
+  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,bossLog:{},projBlocks:0,last:Date.now()};}
 
 function recalc(){
   const r={click:0,dps:0,gold:0,crit:0,boss:0,luck:0};
@@ -765,7 +767,7 @@ const sfx={
 };
 
 /* ---------- game runtime ---------- */
-let merch=null,merchT=150,shopOffers=null,weak=null,weakT=2,cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
+let bfx=null,pierce=false,merch=null,merchT=150,shopOffers=null,weak=null,weakT=2,cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
 const comboMult=()=>1+combo/100;
 const parts=[];
 const fx=$('#fx');
@@ -774,9 +776,12 @@ function spawn(){
   let spec;
   if(S.farm){const d=Math.max(0,S.depth-1),seed=hash2(d,500000+(farmN++)),t=rollType(rng(seed));spec={d,seed,type:t};}
   else spec=specAt(S.depth);
-  const max=hpOf(spec.d)*(spec.type==='boss'?BAL.boss:1);
+  const max=hpOf(spec.d)*(spec.type==='boss'?BAL.boss*GIMMICK[gimOf(spec.d)].hp:1);
   cur={d:spec.d,seed:spec.seed,type:spec.type,hp:max,max,tex:getTex(spec),pop:S.farm?.18:0};
-  if(spec.type==='boss'){bossLeft=D.bossDur;sfx.boss();weakT=1.5;if(!S.weakHits)setTimeout(()=>toast('보스 위에 반짝이는 ✚ 약점을 찌르면 피해 ×5, 보스 시간 +1초!','warn'),900);}
+  bfx=null;
+  if(spec.type==='boss'){const g=gimOf(spec.d),G=GIMMICK[g];bfx={g,t:0,el:0,on:false,projT:2.5,projs:[],rg:0};
+    banner(bossName(spec.d),(G.n?G.n+' · ':'')+G.tip);
+    bossLeft=D.bossDur;sfx.boss();weakT=1.5;if(!S.weakHits)setTimeout(()=>toast('보스 위에 반짝이는 ✚ 약점을 찌르면 피해 ×5, 보스 시간 +1초!','warn'),900);}
 }
 function blockName(b){
   if(b.type==='boss')return bossName(b.d);
@@ -793,7 +798,7 @@ function popup(text,cls,lx,ly){
 function burstAt(wx,wy,n,cols,spd,grav,size){
   for(let i=0;i<n;i++)parts.push({x:wx+(Math.random()-.5)*4,y:wy,vx:(Math.random()-.5)*spd,vy:-Math.random()*spd*.9-10,life:.5+Math.random()*.5,max:1,col:cols[i%cols.length],g:grav,s:size||1});
 }
-function damage(a){if(!cur)return;cur.hp-=a;if(cur.hp<=0)breakBlock();}
+function damage(a){if(!cur)return;if(bfx&&bfx.on&&!pierce)a*=bfx.g==='shield'?.15:.5;cur.hp-=a;if(cur.hp<=0)breakBlock();}
 function hit(mult){
   mult=mult||1;ensureAudio();S.clicks++;
   combo=Math.min(100,combo+5);comboIdle=0;
@@ -805,6 +810,7 @@ function hit(mult){
   let dmg=D.click*comboMult()*mult,crit=mult>1;
   if(D.critChance>0&&Math.random()<D.critChance){dmg*=D.critMult;crit=true;S.crits++;buzz(12);}
   swing=.09;shakeT=.07;
+  if(bfx&&bfx.on&&bfx.g==='hide'&&!pierce){popup('빗나감!','dps',COLX+12+(Math.random()-.5)*30,SURF+8);sfx.hit(false);return;}
   const top=S.depth*B;
   burstAt(COLX+20,top,3,[bio(cur.d).block[3],bio(cur.d).block[2]],40,300,1);
   if(combo>=100)burstAt(COLX+24,top-2,2,['#ff7a4a','#f6c64b','#fff0a6'],70,160,1);
@@ -827,7 +833,7 @@ function breakBlock(){
   const b=cur,g=goldOf(b.d,b.type),top=S.depth*B,p=bio(b.d);
   addGold(g);S.blocks++;
   if(b.type==='chest')S.chests++;
-  if(b.type==='boss')S.bosses++;
+  if(b.type==='boss'){S.bosses++;if(bfx){const k=palIdx(b.d),L=S.bossLog[k]||(S.bossLog[k]={k:0,b:999});L.k++;L.b=Math.min(L.b,+bfx.el.toFixed(1));relicDirty=true;}}
   if(b.type==='ore'||b.type==='gem')S.ores++;
   const cols=b.type==='ore'?[p.block[1],p.block[2],p.oreC[0]]:b.type==='gem'?[p.block[2],p.gemC[0],p.gemC[1]]:[p.block[0],p.block[1],p.block[2],p.block[3]];
   burstAt(COLX+12,top+8,REDUCE?8:18,cols,110,420,2);
@@ -890,7 +896,7 @@ function update(dt){
   dpsT+=dt;
   if(dpsT>=1){dpsT=0;if(dpsAcc>0){popup(fmt(dpsAcc),'dps',COLX+12+(Math.random()-.5)*10,SURF+18);hop=.16;}dpsAcc=0;}
   if(cur&&cur.type==='boss'&&buffs.stop<=0){bossLeft-=dt;if(bossLeft<=0)bossFail();}
-  if(S.farm){farmT+=dt;if(farmT>3&&D.dps*D.bossDur*.8>=hpOf(S.depth)*BAL.boss){farmT=0;retryBoss();toast('동료들이 충분히 강해졌어요. 보스에 다시 도전!','win');}}
+  if(S.farm){farmT+=dt;if(farmT>3&&D.dps*D.bossDur*.8>=hpOf(S.depth)*BAL.boss*GIMMICK[gimOf(S.depth)].hp){farmT=0;retryBoss();toast('동료들이 충분히 강해졌어요. 보스에 다시 도전!','win');}}
   for(const k in S.cd)if(S.cd[k]>0)S.cd[k]=Math.max(0,S.cd[k]-dt);
   comboIdle+=dt;if(comboIdle>.5&&combo>0&&buffs.fever<=0)combo=Math.max(0,combo-35*dt/(1+bl('ember')));
   if(combo<100)feverCharge=0;
@@ -901,6 +907,7 @@ function update(dt){
     toast('떠돌이 상인 두더지가 왔어요! 왼쪽의 초록 모자 두더지를 눌러 보세요.','win',SPR.merch);}
   if(merch&&!shopOffers){merch.life-=dt;if(merch.life<=0)merch=null;}
   if(cur&&cur.type==='boss'&&!blessOpts){
+    if(bfx)updateBoss(dt);
     weakT-=dt;if(weak){weak.life-=dt;if(weak.life<=0)weak=null;}
     if(!weak&&weakT<=0){weak={x:COLX+4+(Math.random()*16|0),y:SURF+4+(Math.random()*16|0),life:1.4};weakT=1+Math.random()*1.5;}
   }else weak=null;
@@ -988,11 +995,14 @@ function draw(t){
     const d=S.depth+i,sy=d*B-cam;if(sy>=H)break;if(sy+B<=0)continue;
     if(i===0&&cur){
       const ox=(shakeT>0&&!REDUCE)?(Math.random()<.5?-1:1):(cur.type==='boss'&&!REDUCE&&Math.sin(t*24)>.85?1:0);
-      ctx.drawImage(cur.tex.c,COLX+ox,sy);
+      const hid=bfx&&bfx.on&&bfx.g==='hide';if(hid)ctx.globalAlpha=.22+.08*Math.sin(t*20);
+      ctx.drawImage(cur.tex.c,COLX+ox,sy);ctx.globalAlpha=1;
       const stage=Math.min(4,Math.floor((1-cur.hp/cur.max)*5));
       if(stage>0){ctx.fillStyle='rgba(10,6,12,.85)';cur.tex.cracks.forEach(w=>{const n=Math.floor(w.length/2*stage/4);for(let j=0;j<n;j++)ctx.fillRect(COLX+ox+w[2*j],sy+w[2*j+1],1,1);});}
       if(cur.pop>0){ctx.globalAlpha=Math.min(1,cur.pop/.18);ctx.fillStyle='#fff';ctx.fillRect(COLX,sy,B,B);ctx.globalAlpha=1;}
-      if(cur.type==='boss'){ctx.globalAlpha=.18+.12*Math.sin(t*6);ctx.fillStyle='#ff3a2a';ctx.fillRect(COLX,sy,B,B);ctx.globalAlpha=1;}
+      if(cur.type==='boss'&&!hid){ctx.globalAlpha=.18+.12*Math.sin(t*6);ctx.fillStyle='#ff3a2a';ctx.fillRect(COLX,sy,B,B);ctx.globalAlpha=1;}
+      if(bfx&&bfx.on&&bfx.g==='shield'){ctx.globalAlpha=.3+.15*Math.sin(t*16);ctx.fillStyle='#8fd0ff';ctx.fillRect(COLX,sy,B,B);ctx.globalAlpha=1;
+        ctx.fillStyle='#c8f6ff';ctx.fillRect(COLX-2,sy-2,B+4,1);ctx.fillRect(COLX-2,sy+B+1,B+4,1);ctx.fillRect(COLX-2,sy-2,1,B+4);ctx.fillRect(COLX+B+1,sy-2,1,B+4);}
       // target brackets
       ctx.fillStyle=cur.type==='boss'?'#ff7a4a':'#fff6e0';ctx.globalAlpha=.55+.3*Math.sin(t*4);
       const x0=COLX+ox,x1=COLX+ox+B-1,y0=sy,y1=sy+B-1;
@@ -1022,6 +1032,10 @@ function draw(t){
   // particles
   for(const p of parts){const sy=Math.round(p.y-cam);if(sy<-2||sy>H)continue;ctx.globalAlpha=Math.min(1,p.life*2.5);ctx.fillStyle=p.col;ctx.fillRect(Math.round(p.x),sy,p.s,p.s);}
   ctx.globalAlpha=1;
+  // boss projectiles
+  if(bfx)bfx.projs.forEach(p=>{if(p.life<.7&&Math.floor(t*12)%2)return;
+    const s=1+(Math.floor(t*6)%2);ctx.fillStyle='#1b1424';ctx.fillRect(p.x-7-s,p.y-7-s,14+2*s,1);ctx.fillRect(p.x-7-s,p.y+6+s,14+2*s,1);
+    ctx.drawImage(PROJ_ICON[p.k],p.x-6,p.y-6);});
   // boss weak spot
   if(weak&&!(weak.life<.4&&Math.floor(t*12)%2)){
     ctx.fillStyle=Math.floor(t*8)%2?'#ffffff':'#ff3a2a';
@@ -1271,13 +1285,59 @@ function updateQuests(){
 }
 
 
+
+/* ---------- boss gimmicks: each biome's boss fights differently ---------- */
+const BOSSG=['none','shield','regen','shield','regen','proj','shield','proj','hide','hide','proj','time'];
+const GIMMICK={
+ none:{n:'',tip:'반짝이는 약점 ✚를 찔러 보세요!',hp:1},
+ shield:{n:'방어막',tip:'파랗게 빛나는 동안 피해 15%! 약점 ✚는 방어막을 뚫어요',hp:.8},
+ regen:{n:'회복',tip:'계속 체력을 회복해요. 쉬지 말고 몰아치세요!',hp:.8},
+ proj:{n:'투사체',tip:'날아온 공격을 눌러서 막으세요! 놓치면 시간 -2초',hp:.9},
+ hide:{n:'숨기',tip:'흐려지면 공격이 빗나가요. 약점 ✚는 맞힐 수 있어요!',hp:.85},
+ time:{n:'시간 훔치기',tip:'나타난 시계를 눌러 막으세요! 놓치면 시간 -3초',hp:.9}
+};
+const gimOf=d=>BOSSG[palIdx(d)];
+const PROJ_ICON={5:shapeIcon('flake','#ffffff'),7:shapeIcon('orb','#ff6a1f'),10:shapeIcon('spore','#7dff6a'),11:shapeIcon('clock','#f6c64b')};
+function updateBoss(dt){
+  bfx.el+=dt;
+  if(buffs.stop>0)return;
+  bfx.t+=dt;
+  const g=bfx.g;
+  if(g==='shield'||g==='hide'){
+    const on=g==='shield'?bfx.t%8>5.5:bfx.t%7>5.3;
+    if(on&&!bfx.on){popup(g==='shield'?'방어막!':'숨었다!','tag',COLX+12,SURF-6);noise(.2,.12,g==='shield'?3000:300);}
+    bfx.on=on;
+  }else if(g==='regen'){
+    cur.hp=Math.min(cur.max,cur.hp+cur.max*.02*dt);
+    bfx.rg-=dt;if(bfx.rg<=0){bfx.rg=.45;burstAt(COLX+4+Math.random()*16,S.depth*B+18,2,['#62e0b4','#b8f0c8'],30,-60,1);}
+  }else if(g==='proj'||g==='time'){
+    bfx.projT-=dt;
+    if(bfx.projT<=0){bfx.projT=2.2+Math.random()*1.6;const left=Math.random()<.5;
+      bfx.projs.push({x:Math.round(left?10+Math.random()*30:90+Math.random()*28),y:Math.round(12+Math.random()*64),life:2.4,k:palIdx(cur.d)});sfx.nug();}
+    for(let i=bfx.projs.length-1;i>=0;i--){const p=bfx.projs[i];p.life-=dt;
+      if(p.life<=0){bfx.projs.splice(i,1);const pen=g==='time'?3:2;bossLeft-=pen;popup(`-${pen}초`,'crit',p.x,p.y);sfx.fail();buzz(40);}}
+  }
+}
+function blockProj(i){
+  const p=bfx.projs.splice(i,1)[0];S.projBlocks++;ensureAudio();
+  burstAt(p.x,p.y+Math.round(moleY)-SURF,10,['#ffffff','#fff6a0','#8fd0ff'],110,200,1);
+  popup('막았다!','tag',p.x,p.y-8);sfx.coin();buzz(15);
+}
+const FACES={};
+function bossFace(k,sil){
+  const key=k+(sil?'s':'');
+  if(!FACES[key]){const c=mk(B,B),x=c.getContext('2d');x.drawImage(makeBlockTex(k*25+24,'boss',4242+k),0,0);
+    if(sil){x.globalCompositeOperation='source-atop';x.fillStyle='#3a2d3a';x.fillRect(0,0,B,B);}FACES[key]=c;}
+  return FACES[key];
+}
+
 /* ---------- boss weak spot ---------- */
 function hitWeak(){
   const w=weak;weak=null;weakT=.8+Math.random();S.weakHits++;
   bossLeft=Math.min(D.bossDur,bossLeft+1);
   burstAt(w.x,w.y+Math.round(moleY)-SURF,12,['#ff3a2a','#fff6a0','#ffffff'],120,200,1);
   popup('약점! +1초','tag',w.x,w.y-10);sfx.nug();buzz(25);
-  hit(5);
+  pierce=true;hit(5);pierce=false;
 }
 
 /* ---------- hats: cosmetic, each one owned adds +3% gold ---------- */
@@ -1328,7 +1388,7 @@ function updateHud(){
     if(isB){$('#bossfill').style.width=Math.max(0,bossLeft/D.bossDur*100)+'%';setText('bosstime',bossLeft.toFixed(1)+'초');}
   }
   $('#retry').hidden=!S.farm;
-  setText('nextboss',S.farm?'보스 재도전 대기 중':cur&&cur.type==='boss'?'보스전!':`보스까지 ${25-(S.depth%25)}m`);
+  setText('nextboss',S.farm?'보스 재도전 대기 중':cur&&cur.type==='boss'?(bfx&&GIMMICK[bfx.g].n?`보스전! · ${GIMMICK[bfx.g].n}`:'보스전!'):`보스까지 ${25-(S.depth%25)}m`);
   setText('sClick',fmt(D.click));setText('sDps',fmt(D.dps));setText('sMax',String(S.maxDepth));setText('sGps',fmt(incomePerSec()));
   $('#sCritWrap').hidden=D.critChance<=0;setText('sCrit',Math.round(D.critChance*100)+'%');
   const bf=[];if(buffs.frenzy>0)bf.push(`곡괭이 광란 ×7 · ${Math.ceil(buffs.frenzy)}초`);if(buffs.rush>0)bf.push(`동료의 열정 ×5 · ${Math.ceil(buffs.rush)}초`);
@@ -1464,6 +1524,16 @@ function buildRelics(){
   Object.keys(lab).forEach(k=>{if(r[k]>0)sum.appendChild(el('span',null,k==='boss'?`${lab[k]} +${r[k]}초`:k==='crit'?`${lab[k]} +${Math.round(r[k]*100)}%p`:`${lab[k]} +${Math.round(r[k]*100)}%`));});
   if(!n)sum.appendChild(el('span',null,'블록을 캐다 보면 가끔 유물이 나와요. 보스는 꼭 하나씩 떨어뜨려요.'));
   const grid=$('#relicGrid');grid.innerHTML='';
+  const nk=Object.keys(S.bossLog).length;
+  grid.appendChild(el('h3',null,`보스 도감 · ${nk} / ${BIOMES.length}`));
+  const dex=el('div','rgrid');
+  BIOMES.forEach((bi,k)=>{
+    const L=S.bossLog[k],seen=S.maxDepth>=k*25+24,G=GIMMICK[BOSSG[k]],c=el('div','relic'+(L?'':' no'));
+    c.append(clone(bossFace(k,!L),'pi'),el('b',null,L||seen?bi.boss:'???'),
+      el('small',null,L?`${G.n||'기본'} · ${L.k}번 · 최고 ${L.b}초`:seen?`${G.n||'기본'} · 아직 못 이겼어요`:`${k*25+25}m`));
+    dex.appendChild(c);
+  });
+  grid.appendChild(dex);
   const owned=BLESS.filter(b=>bl(b.id));
   if(owned.length){grid.appendChild(el('h3',null,'이번 생의 축복 · 환생하면 사라져요'));const bx=el('div','sumbox');owned.forEach(b=>bx.appendChild(el('span',null,`${b.n} ×${bl(b.id)} · ${b.d}`)));grid.appendChild(bx);}
   BIOMES.forEach((bi,b)=>{
@@ -1614,6 +1684,7 @@ screen.addEventListener('pointerdown',e=>{
   e.preventDefault();screen.focus({preventScroll:true});
   const r=cv.getBoundingClientRect(),lx=(e.clientX-r.left)/r.width*W,ly=(e.clientY-r.top)/r.height*H;
   if(merch&&lx>=MERCH_X-3&&lx<=MERCH_X+24&&ly>=SURF-29&&ly<=SURF+1){openShop();return;}
+  if(bfx){const i=bfx.projs.findIndex(p=>A(lx-p.x)<9&&A(ly-p.y)<9);if(i>=0){blockProj(i);return;}}
   if(weak&&A(lx-weak.x)<7&&A(ly-weak.y)<7){hitWeak();return;}
   if(nug&&A(lx-(nug.x+4))<9&&A(ly-(nug.y+3))<9){catchNug();return;}
   hit();
@@ -1691,7 +1762,7 @@ let importUntil=0;
 function normalize(src){
   const n=Object.assign(defaults(),src||{});
   n.helpers=HELPERS.map((_,i)=>(Array.isArray(n.helpers)&&+n.helpers[i])||0);
-  ['up','relics','ach','cd','bless','hats','res'].forEach(k=>{if(!n[k]||typeof n[k]!=='object')n[k]={};});
+  ['up','relics','ach','cd','bless','hats','res','bossLog'].forEach(k=>{if(!n[k]||typeof n[k]!=='object')n[k]={};});
   n.hats.basic=1;if(!n.daily||typeof n.daily!=='object')n.daily={day:'',streak:0};
   if(!Array.isArray(n.quests))n.quests=[];
   return n;
@@ -1770,7 +1841,7 @@ function start(data){
   if(S.depth===0&&S.clicks===0)banner('두더지 광산','0m · 표토층');
   setInterval(updateHud,100);setInterval(updatePanel,250);setInterval(save,15000);setInterval(checkAch,1000);
   if(window.__mmExpose)window.__mm={get S(){return S;},D,buffs,BAL,draw,update,hit,useSkill,buyHelper,costOf,maxBuy,recalc,crystalGain,UPS,HELPERS,
-    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,get merch(){return merch;},set merchT(v){merchT=v;},get shopOffers(){return shopOffers;},openShop,buyOffer,closeShop,buyRes,RES,gainFossils,resCost,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
+    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,get bfx(){return bfx;},blockProj,get merch(){return merch;},set merchT(v){merchT=v;},get shopOffers(){return shopOffers;},openShop,buyOffer,closeShop,buyRes,RES,gainFossils,resCost,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
   updateHud();
   if(window.claude&&window.claude.hot&&window.claude.hot.snapshot)window.claude.hot.snapshot(serialize);
   last=performance.now();requestAnimationFrame(frame);
