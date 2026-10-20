@@ -178,6 +178,16 @@ h3:first-child{margin-top:0}
 .card .big b{font-family:var(--f-pix);color:var(--crys);font-size:22px}
 .kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:15px;color:var(--muted)}
 .kv b{font-family:var(--f-pix);color:var(--text);font-weight:400;font-size:14px;text-align:right}
+#saveCode{width:100%;box-sizing:border-box;min-height:64px;resize:vertical;padding:8px;border:0;background:#0d080e;color:var(--text);font-family:var(--f-pix);font-size:11px;line-height:1.4;
+  word-break:break-all;-webkit-user-select:text;user-select:text;box-shadow:0 0 0 2px var(--edge)}
+#saveCode:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.btnrow{display:flex;flex-wrap:wrap;gap:4px}
+.help summary{cursor:pointer;font-size:16px;color:var(--gold);list-style:none}
+.help summary::-webkit-details-marker{display:none}
+.help summary::before{content:'▶ ';font-size:11px}
+.help[open] summary::before{content:'▼ '}
+.help ul{margin:10px 0 0;padding-left:18px;display:grid;gap:7px;font-size:14px;color:var(--muted)}
+.help b{color:var(--text);font-weight:400}
 
 .skills{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
 .skill{position:relative;display:grid;grid-template-columns:auto auto;align-items:center;gap:0 8px;padding:6px 18px 6px 8px;border:0;cursor:pointer;background:var(--panel);text-align:left;overflow:hidden;
@@ -1335,6 +1345,29 @@ function buildRebirth(){
   box.appendChild(card);
   box.appendChild(el('h3',null,'기록'));
   const kv=el('div','kv');rb.kv=kv;box.appendChild(kv);
+  box.appendChild(el('h3',null,'게임 방법'));
+  const help=el('details','card help'),hs=el('summary',null,'처음이라면 눌러서 읽어 보세요'),ul=el('ul');
+  [['캐기','화면을 누르거나 스페이스바를 눌러 블록을 캐요. 골드로 동료를 고용하면 알아서 캐요.'],
+   ['콤보 · 피버','빠르게 연타하면 콤보가 쌓여 피해가 최대 ×2. 콤보가 가득 찬 채로 20번 더 치면 피버 타임(클릭 피해 ×3)!'],
+   ['보스','25m마다 보스가 나와요. 30초 안에 쓰러뜨려야 해요. 보스 위 ✚ 약점을 찌르면 피해 ×5에 1초 추가. 이기면 축복 카드 1장을 골라요.'],
+   ['보스에게 졌다면','한 층 위에서 골드를 모아 동료를 키우세요. 충분히 강해지면 자동으로 다시 도전해요.'],
+   ['반짝이는 금맥','화면 어딘가에 금덩이가 반짝이면 눌러 보세요. 골드 소나기나 강화 효과가 나와요.'],
+   ['스킬','키보드 1 지진, 2 황금 손, 3 시간 정지. 25m, 50m, 100m에서 열려요.'],
+   ['의뢰 · 출석','의뢰 탭에서 의뢰를 끝내고 매일 출석 보상을 받으세요.'],
+   ['유물 · 업적 · 모자','유물과 업적은 영구 강화, 모자는 하나마다 골드 +3%예요.'],
+   ['환생','100m를 넘기면 환생할 수 있어요. 처음부터 다시 파지만 마그마 결정으로 모든 피해가 영원히 늘어요.']
+  ].forEach(([k,v])=>{const li=el('li');li.append(el('b',null,k+' · '),v);ul.appendChild(li);});
+  help.append(hs,ul);box.appendChild(help);
+  box.appendChild(el('h3',null,'저장 백업'));
+  const bk=el('div','card');
+  rb.code=el('textarea');rb.code.id='saveCode';rb.code.setAttribute('aria-label','백업 코드');rb.code.placeholder='여기에 백업 코드가 나와요. 다른 곳에서 만든 코드를 붙여 넣어도 돼요.';
+  rb.code.spellcheck=false;rb.code.addEventListener('keydown',e=>e.stopPropagation());
+  const row=el('div','btnrow');
+  const exp=el('button','btn',null);exp.id='exportBtn';exp.textContent='백업 코드 만들기 · 복사';exp.addEventListener('click',exportSave);
+  rb.imp=el('button','btn danger');rb.imp.id='importBtn';rb.imp.addEventListener('click',importSave);
+  row.append(exp,rb.imp);
+  bk.append(el('p',null,'저장 기록은 기기와 사이트 주소마다 따로예요. 다른 폰이나 다른 주소로 옮길 때 백업 코드를 복사해 두었다가 거기서 붙여 넣고 불러오세요.'),rb.code,row);
+  box.appendChild(bk);
   box.appendChild(el('h3',null,'설정'));
   const set=el('div','card');
   rb.reset=el('button','btn danger');rb.reset.id='resetBtn';rb.reset.addEventListener('click',onReset);
@@ -1352,6 +1385,7 @@ function updateRebirth(){
   rb.btn.disabled=g<=0;
   rb.btn.textContent=now<confirmUntil?'한 번 더 누르면 환생해요':`새 땅에서 다시 파기 (+${g})`;
   syncInstall();
+  rb.imp.textContent=now<importUntil?'지금 기록을 덮어써요 · 한 번 더 누르세요':'붙여 넣은 코드 불러오기';
   rb.reset.textContent=now<resetUntil?'정말 지울까요? 한 번 더 누르세요':'저장 기록 모두 지우기';
   const rows=[['총 클릭',fmt(S.clicks)],['캔 블록',fmt(S.blocks)],['모은 골드',fmt(S.totalGold)],['최고 깊이',S.maxDepth+'m'],['환생 횟수',String(S.prestiges)],['찾은 유물',`${RELICS.filter(r=>S.relics[r.id]).length} / ${RELICS.length}`]];
   const sig=rows.map(r=>r[1]).join('|');
@@ -1406,6 +1440,7 @@ function offline(sec,rate,label){
   if(sec<30||D.dps<=0)return;
   const g=incomePerSec()*Math.min(sec,8*3600)*rate;if(g<=0)return;
   addGold(g);
+  if(sec<180){toast(`${label} ${fmtTime(sec)} 동안 동료들이 ${fmt(g)} 골드를 캤어요.`,'win',SPR.nug);return;}
   const cr=$('#wCrew');cr.innerHTML='';
   S.helpers.map((l,i)=>l>0?i:-1).filter(i=>i>=0).slice(-6).forEach(i=>cr.appendChild(clone(SPR.helpers[i])));
   $('#wText').textContent=`${label} ${fmtTime(Math.min(sec,8*3600))} 동안 동료들이 열심히 캤어요`;
@@ -1438,6 +1473,43 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('pagehide',save);
 
+
+
+/* ---------- save backup code ---------- */
+const CODE_TAG='MOLE1:';
+let importUntil=0;
+function normalize(src){
+  const n=Object.assign(defaults(),src||{});
+  n.helpers=HELPERS.map((_,i)=>(Array.isArray(n.helpers)&&+n.helpers[i])||0);
+  ['up','relics','ach','cd','bless','hats'].forEach(k=>{if(!n[k]||typeof n[k]!=='object')n[k]={};});
+  n.hats.basic=1;if(!n.daily||typeof n.daily!=='object')n.daily={day:'',streak:0};
+  if(!Array.isArray(n.quests))n.quests=[];
+  return n;
+}
+function exportSave(){
+  save();
+  const code=CODE_TAG+btoa(unescape(encodeURIComponent(JSON.stringify(serialize()))));
+  rb.code.value=code;rb.code.select();
+  const done=()=>toast('백업 코드를 복사했어요! 메모장이나 메시지에 붙여 넣어 보관하세요.','win',SPR.nug);
+  const fallback=()=>{try{document.execCommand('copy');done();}catch(e){toast('코드를 길게 눌러 직접 복사해 주세요.','warn');}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(code).then(done,fallback);else fallback();
+}
+function importSave(){
+  const raw=rb.code.value.trim().replace(/\s+/g,'');
+  let data=null;
+  try{data=JSON.parse(decodeURIComponent(escape(atob(raw.startsWith(CODE_TAG)?raw.slice(CODE_TAG.length):raw))));}catch(e){}
+  if(!data||typeof data.gold!=='number'||!Array.isArray(data.helpers)){toast('백업 코드가 올바르지 않아요. 처음부터 끝까지 빠짐없이 붙여 넣었는지 확인해 주세요.','warn');importUntil=0;updateRebirth();return;}
+  const now=performance.now();if(now>importUntil){importUntil=now+3000;updateRebirth();return;}
+  importUntil=0;
+  S=normalize(data);S.last=Date.now();
+  Object.keys(buffs).forEach(k=>buffs[k]=0);texCache.clear();parts.length=0;nug=null;weak=null;combo=0;
+  closeBless();$('#welcome').hidden=true;ensureQuests();setLogo();
+  recalc();moleY=S.depth*B;vy=0;spawn();
+  toolSig='';questSig='';relicDirty=true;achDirty=true;rb.sig='';
+  updatePanel();syncControls();save();rb.code.value='';
+  if(S.pendingBless)setTimeout(offerBless,500);
+  sfx.relic();toast(`기록을 불러왔어요! 깊이 ${S.depth}m · 골드 ${fmt(S.gold)}`,'win',SPR.crys);
+}
 
 /* ---------- install as an app (PWA) ---------- */
 let installEvt=null;
@@ -1477,11 +1549,9 @@ function frame(now){
 }
 function start(data){
   const src=(data&&typeof data.gold==='number')?data:load();
-  S=Object.assign(defaults(),src||{});
-  S.helpers=HELPERS.map((_,i)=>(S.helpers&&S.helpers[i])||0);
+  S=normalize(src);
   recalc();moleY=S.depth*B;spawn();
   if(!HAT_BY[S.hat])S.hat='basic';setLogo();$('#coinIco').appendChild(clone(shapeIcon('coin','#f6c64b'),'pi'));
-  S.ach=S.ach||{};S.cd=S.cd||{};
   ensureQuests();if(S.pendingBless)setTimeout(offerBless,800);
   buildHelpers();buildSkills();syncControls();setTab('helpers');
   syncInstall();
