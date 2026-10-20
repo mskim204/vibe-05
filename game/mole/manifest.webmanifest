@@ -1,0 +1,17 @@
+{
+  "name": "두더지 광산",
+  "short_name": "두더지 광산",
+  "description": "땅을 파고 동료를 모아 지구 핵까지 내려가는 픽셀 방치형 게임",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#140e14",
+  "theme_color": "#140e14",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
