@@ -598,7 +598,7 @@ const D={};
 const buffs={frenzy:0,rush:0,midas:0,stop:0,fever:0};
 // 콤보 MAX 상태로 FEVER_HITS번 더 치면 피버 타임
 const FEVER_HITS=20,FEVER_DUR=8;
-function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,buyAmt:1,
+function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,sfxOff:false,musicOff:false,vibeOff:false,buyAmt:1,
   ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},last:Date.now()};}
 
 function recalc(){
@@ -716,10 +716,10 @@ function ensureAudio(){
   if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();NB=AC.createBuffer(1,Math.floor(AC.sampleRate*.3),AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}catch(e){AC=null;}}
   if(AC&&AC.state==='suspended')AC.resume();
 }
-function tone(f,d,o){o=o||{};if(!AC||S.muted)return;const t=AC.currentTime+(o.delay||0);const os=AC.createOscillator(),g=AC.createGain();
+function tone(f,d,o){o=o||{};if(!AC||S.muted||S.sfxOff)return;const t=AC.currentTime+(o.delay||0);const os=AC.createOscillator(),g=AC.createGain();
   os.type=o.type||'square';os.frequency.setValueAtTime(f,t);if(o.slide)os.frequency.exponentialRampToValueAtTime(Math.max(30,f*o.slide),t+d);
   g.gain.setValueAtTime(o.v||.045,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);os.connect(g);g.connect(AC.destination);os.start(t);os.stop(t+d+.05);}
-function noise(d,v,freq){if(!AC||S.muted||!NB)return;const t=AC.currentTime,s=AC.createBufferSource();s.buffer=NB;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=freq||1200;
+function noise(d,v,freq){if(!AC||S.muted||S.sfxOff||!NB)return;const t=AC.currentTime,s=AC.createBufferSource();s.buffer=NB;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=freq||1200;
   const g=AC.createGain();g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(AC.destination);s.start(t);s.stop(t+d);}
 const sfx={
   hit(c){const n=performance.now();if(n-lastHitSfx<35)return;lastHitSfx=n;noise(.05,.16,900+Math.random()*600);tone(c?520:170+Math.random()*60,.06,{slide:.5,v:c?.05:.035});},
@@ -1037,7 +1037,7 @@ function pickBless(i){
   if(S.pendingBless)setTimeout(offerBless,400);
 }
 function closeBless(){blessOpts=null;$('#bless').hidden=true;}
-function buzz(p){if(S&&!S.muted&&navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}
+function buzz(p){if(S&&!S.vibeOff&&navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}
 
 /* ---------- quests & daily reward ---------- */
 const QUESTS=[
@@ -1345,6 +1345,7 @@ function buildRebirth(){
   box.appendChild(card);
   box.appendChild(el('h3',null,'기록'));
   const kv=el('div','kv');rb.kv=kv;box.appendChild(kv);
+  const brag=el('button','btn');brag.id='shareBtn';brag.textContent='📣 친구에게 자랑하기';brag.style.marginTop='10px';brag.addEventListener('click',shareRecord);box.appendChild(brag);
   box.appendChild(el('h3',null,'게임 방법'));
   const help=el('details','card help'),hs=el('summary',null,'처음이라면 눌러서 읽어 보세요'),ul=el('ul');
   [['캐기','화면을 누르거나 스페이스바를 눌러 블록을 캐요. 골드로 동료를 고용하면 알아서 캐요.'],
@@ -1373,8 +1374,13 @@ function buildRebirth(){
   rb.reset=el('button','btn danger');rb.reset.id='resetBtn';rb.reset.addEventListener('click',onReset);
   rb.inst=el('button','btn');rb.inst.id='installBtn';rb.inst.textContent='📲 홈 화면에 앱으로 설치';rb.inst.addEventListener('click',installApp);
   rb.instP=el('p');
+  const tg=el('div','btnrow');rb.tg={};
+  [['sfxOff','효과음'],['musicOff','배경음악'],['vibeOff','진동']].forEach(([k,n])=>{
+    const b=el('button','btn');b.id='tg-'+k;b.addEventListener('click',()=>{if(S.muted&&k!=='vibeOff'){S.muted=false;S.sfxOff=S.musicOff=true;S[k]=false;}else S[k]=!S[k];ensureAudio();syncControls();if(k==='sfxOff'&&!S[k])sfx.coin();if(k==='vibeOff'&&!S[k])buzz(40);});
+    rb.tg[k]=[b,n];tg.appendChild(b);});
+  set.append(tg);
   set.append(el('p',null,'게임은 이 브라우저에 자동 저장돼요. 창을 닫아 둔 동안에도 동료들이 최대 8시간까지 절반 속도로 캐요.'),rb.instP,rb.inst,rb.reset);
-  box.appendChild(set);rebirthBuilt=true;
+  box.appendChild(set);rebirthBuilt=true;syncControls();
 }
 function updateRebirth(){
   if(!rebirthBuilt)buildRebirth();
@@ -1429,6 +1435,7 @@ function setTab(t){
 function syncControls(){
   document.querySelectorAll('.amt button').forEach(b=>b.setAttribute('aria-pressed',String(String(S.buyAmt)===b.dataset.amt)));
   $('#mute').setAttribute('aria-pressed',String(!!S.muted));$('#mute').textContent=S.muted?'×':'♪';
+  if(rb.tg)Object.entries(rb.tg).forEach(([k,[b,n]])=>{const on=!S[k]&&(k==='vibeOff'||!S.muted);b.textContent=`${n} ${on?'켜짐':'꺼짐'}`;b.setAttribute('aria-pressed',String(on));b.classList.toggle('danger',!on);});
 }
 
 /* ---------- save ---------- */
@@ -1474,6 +1481,52 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('pagehide',save);
 
 
+
+
+/* ---------- background music: a chiptune loop per biome, faster during bosses ---------- */
+const MUS={next:0,step:0,pats:{}};
+const MUS_ROOT=[0,-2,3,5,-4,7,2,-5,9];
+const MUS_SCALE=[0,3,5,7,10,12,15,17,19];
+function musPat(key,boss){
+  if(!MUS.pats[key]){const R=rng(9001+key*31),lead=[];
+    for(let bar=0;bar<4;bar++)for(let i=0;i<8;i++){const rest=boss?.22:.4;lead.push(R()<rest&&i%2?null:MUS_SCALE[Math.min(MUS_SCALE.length-1,(R()*(boss?6:9))|0)]);}
+    for(let i=24;i<32;i++)lead[i]=lead[i-16];
+    MUS.pats[key]={lead,bass:boss?[0,0,1,0,3,3,1,-2]:[0,0,-4,-4,-2,-2,3,-5]};}
+  return MUS.pats[key];
+}
+function musNote(f,d,t,type,v){
+  const os=AC.createOscillator(),g=AC.createGain();os.type=type;os.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);os.connect(g);g.connect(AC.destination);os.start(t);os.stop(t+d+.02);
+}
+function musTick(){
+  if(!AC||AC.state!=='running'||!S||S.muted||S.musicOff||document.hidden){MUS.next=0;return;}
+  const boss=!!(cur&&cur.type==='boss'),fever=buffs.fever>0,pi=palIdx(S.depth);
+  const step=60/(boss?148:fever?132:108)/2,root=110*Math.pow(2,MUS_ROOT[pi]/12),pat=musPat(pi*2+(boss?1:0),boss);
+  if(MUS.next<AC.currentTime)MUS.next=AC.currentTime+.05;
+  while(MUS.next<AC.currentTime+.3){
+    const i=MUS.step%32,n=pat.lead[i],t=MUS.next;
+    if(n!=null)musNote(root*4*Math.pow(2,n/12),step*.8,t,boss?'sawtooth':'square',boss?.012:.014);
+    if(i%4===0)musNote(root*Math.pow(2,pat.bass[(i>>2)%8]/12),step*3.6,t,'triangle',.06);
+    if((boss||fever)&&i%2===0&&NB){const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();
+      s.buffer=NB;f.type='highpass';f.frequency.value=6000;g.gain.setValueAtTime(.02,t);g.gain.exponentialRampToValueAtTime(.0001,t+.05);
+      s.connect(f);f.connect(g);g.connect(AC.destination);s.start(t);s.stop(t+.06);}
+    MUS.next+=step;MUS.step++;
+  }
+}
+setInterval(musTick,80);
+
+/* ---------- share your record ---------- */
+function shareRecord(){
+  ensureAudio();
+  const nr=RELICS.filter(r=>S.relics[r.id]).length,na=ACH.filter(a=>S.ach[a.id]).length;
+  const url=location.href.split('#')[0];
+  const text=`⛏️ 두더지 광산에서 최고 ${S.maxDepth}m까지 내려갔어요! (${bioName(S.maxDepth)}) 유물 ${nr}/${RELICS.length} · 업적 ${na}/${ACH.length} · 환생 ${S.prestiges}번. 나보다 깊이 팔 수 있어?`;
+  const copied=()=>toast('자랑 문구를 복사했어요! 친구에게 붙여 넣어 보내세요.','win',SPR.mole);
+  const copy=()=>{const full=text+' '+url;
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(full).then(copied,()=>toast(full,'win'));else toast(full,'win');};
+  if(navigator.share)navigator.share({title:'두더지 광산',text,url}).catch(e=>{if(e&&e.name!=='AbortError')copy();});
+  else copy();
+}
 
 /* ---------- save backup code ---------- */
 const CODE_TAG='MOLE1:';
