@@ -114,7 +114,7 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .tabs button{position:relative;border:0;background:transparent;cursor:pointer;padding:10px 2px;font-size:16px;white-space:nowrap;color:var(--muted);box-shadow:inset 0 -3px 0 var(--edge)}
 .tabs button[aria-selected="true"]{color:var(--gold);background:var(--row);box-shadow:inset 3px 3px 0 var(--panel-hi),inset -3px 0 0 var(--edge)}
 .tabs .num{font-size:10px;color:var(--dim)}
-#toolDot,#questDot,#resDot{position:absolute;top:6px;right:8px;width:8px;height:8px;background:var(--gold);box-shadow:0 0 0 2px var(--edge)}
+#toolDot,#questDot,#resDot,#rbDot{position:absolute;top:6px;right:8px;width:8px;height:8px;background:var(--gold);box-shadow:0 0 0 2px var(--edge)}
 .tabbody{flex:1;min-height:0;overflow:auto;padding:12px 12px 16px;scrollbar-color:#4a3550 transparent}
 .amt{display:flex;align-items:center;gap:4px;margin-bottom:10px;color:var(--muted);font-size:14px}
 .amt span{margin-right:auto}
@@ -325,7 +325,7 @@ h3:first-child{margin-top:0}
         <button id="t-relics" role="tab" data-tab="relics" aria-selected="false">유물</button>
         <button id="t-ach" role="tab" data-tab="ach" aria-selected="false">업적</button>
         <button id="t-res" role="tab" data-tab="res" aria-selected="false">연구<i id="resDot" hidden></i></button>
-        <button id="t-rebirth" role="tab" data-tab="rebirth" aria-selected="false">환생</button>
+        <button id="t-rebirth" role="tab" data-tab="rebirth" aria-selected="false">환생<i id="rbDot" hidden></i></button>
       </nav>
       <div class="tabbody">
         <section id="tab-helpers">
@@ -622,11 +622,16 @@ const ACH=[
 const ACH_BONUS=.02;
 const TYPEMULT={plain:1,ore:3,gem:12,chest:40,boss:12};
 // 밸런스 수치 (헤드리스 시뮬레이션으로 조정)
-const BAL={hp:8,hpGrow:1.14,gold:1,goldGrow:1.125,costGrow:1.15,cryPer:.1,boss:6,qGold:5,qSec:20,qNeed:3,qRush:5};
+const BAL={hp:8,hpGrow:1.14,gold:1,goldGrow:1.125,costGrow:1.15,cryPer:.1,boss:6,qGold:5,qSec:20,qNeed:3,qRush:5,pity:.15,pityMax:3,cryK:10,cryB:1.03};
 const hpOf=d=>Math.ceil(BAL.hp*Math.pow(BAL.hpGrow,d));
 const goldBase=d=>Math.ceil(BAL.gold*Math.pow(BAL.goldGrow,d));
 const goldOf=(d,type)=>goldBase(d)*TYPEMULT[type]*D.goldMult;
-const crystalGain=()=>S.runMax<100?0:Math.floor(Math.pow((S.runMax-80)/5,1.6)*(1+.15*rl('cryamp')));
+const crystalGain=()=>S.runMax<100?0:Math.floor(Math.max(Math.pow((S.runMax-80)/5,1.6),BAL.cryK*Math.pow(BAL.cryB,S.runMax-100))*(1+.15*rl('cryamp')));
+// 3분 넘게 기록이 그대로이고 결정을 꽤 받을 수 있으면 환생을 권해요
+const rebirthGood=()=>runStuck>180&&crystalGain()>=Math.max(5,S.crystals*.3);
+// 같은 보스에게 질 때마다 다음 도전에서 체력이 줄어요 (동정 시스템)
+const bossPity=d=>S.bossTry&&S.bossTry.d===d?Math.min(BAL.pityMax,S.bossTry.n)*BAL.pity:0;
+const bossHp=d=>hpOf(d)*BAL.boss*GIMMICK[gimOf(d)].hp*(1-bossPity(d));
 
 /* ---------- state ---------- */
 let S=null;
@@ -635,7 +640,7 @@ const buffs={frenzy:0,rush:0,midas:0,stop:0,fever:0};
 // 콤보 MAX 상태로 FEVER_HITS번 더 치면 피버 타임
 const FEVER_HITS=20,FEVER_DUR=8;
 function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,sfxOff:false,musicOff:false,vibeOff:false,buyAmt:1,
-  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,bossLog:{},projBlocks:0,pets:{},pet:'',eggs:0,eggProg:0,guide:0,last:Date.now()};}
+  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,bossLog:{},projBlocks:0,pets:{},pet:'',eggs:0,eggProg:0,guide:0,bossTry:{d:-1,n:0},last:Date.now()};}
 
 function recalc(){
   const r={click:0,dps:0,gold:0,crit:0,boss:0,luck:0};
@@ -776,7 +781,7 @@ const sfx={
 };
 
 /* ---------- game runtime ---------- */
-let batAcc=0,bfx=null,pierce=false,merch=null,merchT=150,shopOffers=null,weak=null,weakT=2,cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
+let runStuck=0,rbHinted=false,batAcc=0,bfx=null,pierce=false,merch=null,merchT=150,shopOffers=null,weak=null,weakT=2,cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
 const comboMult=()=>1+combo/100;
 const parts=[];
 const fx=$('#fx');
@@ -785,11 +790,12 @@ function spawn(){
   let spec;
   if(S.farm){const d=Math.max(0,S.depth-1),seed=hash2(d,500000+(farmN++)),t=rollType(rng(seed));spec={d,seed,type:t};}
   else spec=specAt(S.depth);
-  const max=hpOf(spec.d)*(spec.type==='boss'?BAL.boss*GIMMICK[gimOf(spec.d)].hp:1);
+  const max=spec.type==='boss'?bossHp(spec.d):hpOf(spec.d);
   cur={d:spec.d,seed:spec.seed,type:spec.type,hp:max,max,tex:getTex(spec),pop:S.farm?.18:0};
   bfx=null;
   if(spec.type==='boss'){const g=gimOf(spec.d),G=GIMMICK[g];bfx={g,t:0,el:0,on:false,projT:2.5,projs:[],rg:0};
-    banner(bossName(spec.d),(G.n?G.n+' · ':'')+G.tip);
+    const pity=bossPity(spec.d);
+    banner(bossName(spec.d),pity?`지친 보스 · 체력 -${Math.round(pity*100)}% · ${G.n||'약점을 노려요'}`:(G.n?G.n+' · ':'')+G.tip);
     bossLeft=D.bossDur;sfx.boss();weakT=1.5;if(!S.weakHits)setTimeout(()=>toast('보스 위에 반짝이는 ✚ 약점을 찌르면 피해 ×5, 보스 시간 +1초!','warn'),900);}
 }
 function blockName(b){
@@ -842,7 +848,7 @@ function breakBlock(){
   const b=cur,g=goldOf(b.d,b.type),top=S.depth*B,p=bio(b.d);
   addGold(g);S.blocks++;
   if(b.type==='chest')S.chests++;
-  if(b.type==='boss'){S.bosses++;if(bfx){const k=palIdx(b.d),L=S.bossLog[k]||(S.bossLog[k]={k:0,b:999});L.k++;L.b=Math.min(L.b,+bfx.el.toFixed(1));relicDirty=true;}}
+  if(b.type==='boss'){S.bosses++;S.bossTry={d:-1,n:0};if(bfx){const k=palIdx(b.d),L=S.bossLog[k]||(S.bossLog[k]={k:0,b:999});L.k++;L.b=Math.min(L.b,+bfx.el.toFixed(1));relicDirty=true;}}
   if(b.type==='ore'||b.type==='gem')S.ores++;
   const cols=b.type==='ore'?[p.block[1],p.block[2],p.oreC[0]]:b.type==='gem'?[p.block[2],p.gemC[0],p.gemC[1]]:[p.block[0],p.block[1],p.block[2],p.block[3]];
   burstAt(COLX+12,top+8,REDUCE?8:18,cols,110,420,2);
@@ -860,15 +866,18 @@ function breakBlock(){
   if(b.type==='boss'){sfx.win();buzz([40,30,70]);toast(`${bossName(b.d)} 격파! +${fmt(g)} 골드`,'win');S.pendingBless++;setTimeout(offerBless,700);}
   if(!S.farm){
     S.depth++;
-    if(S.depth>S.runMax)S.runMax=S.depth;
+    if(S.depth>S.runMax){S.runMax=S.depth;runStuck=0;rbHinted=false;}
     if(S.depth>S.maxDepth)S.maxDepth=S.depth;
     if(S.depth%25===0)banner(bioName(S.depth),`${S.depth}m`);
   }
   spawn();
 }
 function bossFail(){
+  const left=Math.max(1,Math.round(cur.hp/cur.max*100)),d=S.depth;
+  S.bossTry=S.bossTry&&S.bossTry.d===d?{d,n:S.bossTry.n+1}:{d,n:1};
   S.farm=true;farmN=0;farmT=0;sfx.fail();
-  toast('시간 초과! 위층에서 골드를 모아 동료를 키운 뒤 다시 도전하세요.','warn');
+  const pity=Math.round(bossPity(d)*100);
+  toast(`아깝다! 보스 체력이 ${left}% 남았어요. 다음 도전에서는 보스가 지쳐서 체력 -${pity}%! 위층에서 동료를 키워 다시 도전하세요.`,'warn');
   spawn();
 }
 function retryBoss(){S.farm=false;spawn();}
@@ -908,7 +917,8 @@ function update(dt){
   if(dpsT>=1){dpsT=0;if(dpsAcc>0){popup(fmt(dpsAcc),'dps',COLX+12+(Math.random()-.5)*10,SURF+18);hop=.16;}dpsAcc=0;}
   if(pv('bat')&&cur){batAcc+=pv('bat')*dt;if(batAcc>=1){batAcc-=1;const a=D.click*.5;popup(fmt(a),'dps',COLX+2,SURF+4);damage(a);}}
   if(cur&&cur.type==='boss'&&buffs.stop<=0){bossLeft-=dt;if(bossLeft<=0)bossFail();}
-  if(S.farm){farmT+=dt;if(farmT>3&&D.dps*D.bossDur*.8>=hpOf(S.depth)*BAL.boss*GIMMICK[gimOf(S.depth)].hp){farmT=0;retryBoss();toast('동료들이 충분히 강해졌어요. 보스에 다시 도전!','win');}}
+  runStuck+=dt;
+  if(S.farm){farmT+=dt;if(farmT>3&&D.dps*D.bossDur*.8>=bossHp(S.depth)){farmT=0;retryBoss();toast('동료들이 충분히 강해졌어요. 보스에 다시 도전!','win');}}
   for(const k in S.cd)if(S.cd[k]>0)S.cd[k]=Math.max(0,S.cd[k]-dt);
   comboIdle+=dt;if(comboIdle>.5&&combo>0&&buffs.fever<=0)combo=Math.max(0,combo-35*dt/(1+bl('ember')));
   if(combo<100)feverCharge=0;
@@ -1658,14 +1668,14 @@ function buildRebirth(){
   [['캐기','화면을 누르거나 스페이스바를 눌러 블록을 캐요. 골드로 동료를 고용하면 알아서 캐요.'],
    ['콤보 · 피버','빠르게 연타하면 콤보가 쌓여 피해가 최대 ×2. 콤보가 가득 찬 채로 20번 더 치면 피버 타임(클릭 피해 ×3)!'],
    ['보스','25m마다 보스가 나와요. 30초 안에 쓰러뜨려야 해요. 보스 위 ✚ 약점을 찌르면 피해 ×5에 1초 추가. 이기면 축복 카드 1장을 골라요.'],
-   ['보스에게 졌다면','한 층 위에서 골드를 모아 동료를 키우세요. 충분히 강해지면 자동으로 다시 도전해요.'],
+   ['보스에게 졌다면','한 층 위에서 골드를 모아 동료를 키우세요. 질 때마다 보스가 지쳐서 다음 도전 때 체력이 15%씩(최대 45%) 줄어요. 충분히 강해지면 자동으로 다시 도전해요.'],
    ['반짝이는 금맥','화면 어딘가에 금덩이가 반짝이면 눌러 보세요. 골드 소나기나 강화 효과가 나와요.'],
    ['스킬','키보드 1 지진, 2 황금 손, 3 시간 정지. 25m, 50m, 100m에서 열려요.'],
    ['의뢰 · 출석','의뢰 탭에서 의뢰를 끝내고 매일 출석 보상을 받으세요.'],
    ['유물 · 업적 · 모자','유물과 업적은 영구 강화, 모자는 하나마다 골드 +3%예요.'],
    ['떠돌이 상인','가끔 왼쪽에 초록 모자 상인이 와요. 눌러서 축복 카드, 유물, 화석, 강화 물약을 골드로 살 수 있어요.'],
    ['화석 · 연구','100m 아래 보스는 화석을 떨어뜨려요. 연구 탭에서 화석으로 영구 강화를 해요. 환생해도 남아요.'],
-   ['환생','100m를 넘기면 환생할 수 있어요. 처음부터 다시 파지만 마그마 결정으로 모든 피해가 영원히 늘어요.'],
+   ['환생','100m를 넘기면 환생할 수 있어요. 처음부터 다시 파지만 마그마 결정으로 모든 피해가 영원히 늘어요. 깊이 갈수록 결정이 훨씬 많아져요. 오래 막혀 있으면 환생 탭에 점이 떠요.'],
    ['더 깊은 곳','225m 꿈의 동굴, 250m 외계 광맥, 275m 시간의 틈. 그 아래는 끝없는 심연이에요.']
   ].forEach(([k,v])=>{const li=el('li');li.append(el('b',null,k+' · '),v);ul.appendChild(li);});
   help.append(hs,ul);box.appendChild(help);
@@ -1711,7 +1721,7 @@ function onRebirth(){
   const g=crystalGain();if(g<=0)return;
   const now=performance.now();if(now>confirmUntil){confirmUntil=now+3000;updateRebirth();return;}
   confirmUntil=0;ensureAudio();
-  S.crystals+=g;S.prestiges++;S.gold=startGold(rl('start'));S.depth=0;S.runMax=0;S.helpers=HELPERS.map(()=>0);S.up={};S.farm=false;S.bless={};S.pendingBless=0;closeBless();closeShop();merch=null;S.quests.forEach(q=>{q.start=S[q.k]||0;});
+  S.crystals+=g;S.prestiges++;S.gold=startGold(rl('start'));S.depth=0;S.runMax=0;runStuck=0;rbHinted=false;S.helpers=HELPERS.map(()=>0);S.up={};S.farm=false;S.bless={};S.pendingBless=0;closeBless();closeShop();merch=null;S.quests.forEach(q=>{q.start=S[q.k]||0;});
   Object.keys(buffs).forEach(k=>buffs[k]=0);
   texCache.clear();moleY=-100;vy=0;flash=1.2;parts.length=0;nug=null;
   recalc();spawn();toolSig='';updatePanel();relicDirty=true;
@@ -1731,6 +1741,8 @@ function updatePanel(){
   updateTools();
   updateQuests();
   updateRes();
+  const rbGood=rebirthGood();$('#rbDot').hidden=!rbGood;
+  if(rbGood&&!rbHinted){rbHinted=true;toast(`기록이 한동안 안 늘고 있어요. 지금 환생하면 마그마 결정 +${fmt(crystalGain())}개로 더 깊이 갈 수 있어요! (환생 탭)`,'win',SPR.crys);}
   if(curTab==='ach'&&petHead)petHead.textContent=petTitle();
   if(relicDirty)buildRelics();
   if(achDirty&&curTab==='ach')buildAch();
@@ -1853,6 +1865,7 @@ function normalize(src){
   const n=Object.assign(defaults(),src||{});
   if(src&&src.guide===undefined&&(src.clicks||0)>50)n.guide=GUIDE.length;
   if(!n.pets||typeof n.pets!=='object')n.pets={};
+  if(!n.bossTry||typeof n.bossTry!=='object')n.bossTry={d:-1,n:0};
   n.helpers=HELPERS.map((_,i)=>(Array.isArray(n.helpers)&&+n.helpers[i])||0);
   ['up','relics','ach','cd','bless','hats','res','bossLog'].forEach(k=>{if(!n[k]||typeof n[k]!=='object')n[k]={};});
   n.hats.basic=1;if(!n.daily||typeof n.daily!=='object')n.daily={day:'',streak:0};
@@ -1933,7 +1946,7 @@ function start(data){
   if(S.depth===0&&S.clicks===0)banner('두더지 광산','0m · 표토층');
   setInterval(updateHud,100);setInterval(updatePanel,250);setInterval(save,15000);setInterval(checkAch,1000);setInterval(checkGuide,500);checkGuide(true);
   if(window.__mmExpose)window.__mm={get S(){return S;},D,buffs,BAL,draw,update,hit,useSkill,buyHelper,costOf,maxBuy,recalc,crystalGain,UPS,HELPERS,
-    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,get bfx(){return bfx;},gainEgg,hatchEgg,PETS,checkGuide,blockProj,get merch(){return merch;},set merchT(v){merchT=v;},get shopOffers(){return shopOffers;},openShop,buyOffer,closeShop,buyRes,RES,gainFossils,resCost,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
+    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,get bfx(){return bfx;},rebirthGood,gainEgg,hatchEgg,PETS,checkGuide,blockProj,get merch(){return merch;},set merchT(v){merchT=v;},get shopOffers(){return shopOffers;},openShop,buyOffer,closeShop,buyRes,RES,gainFossils,resCost,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
   updateHud();
   if(window.claude&&window.claude.hot&&window.claude.hot.snapshot)window.claude.hot.snapshot(serialize);
   last=performance.now();requestAnimationFrame(frame);
