@@ -193,6 +193,12 @@ h3:first-child{margin-top:0}
 .help b{color:var(--text);font-weight:400}
 
 .skills{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+#guide{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;background:var(--panel);box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px var(--gold)}
+#guide .gs{font-family:var(--f-pix);font-size:11px;color:var(--gold);white-space:nowrap}
+#guide b{font-weight:400;font-size:15px;flex:1;min-width:0}
+#guide .gbar{width:60px;height:6px;background:#0d080e;box-shadow:0 0 0 2px var(--edge);flex:none}
+#guide .gbar i{display:block;height:100%;background:var(--gold)}
+#guide button{border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:18px;padding:0 4px}
 .skill{position:relative;display:grid;grid-template-columns:auto auto;align-items:center;gap:0 8px;padding:6px 18px 6px 8px;border:0;cursor:pointer;background:var(--panel);text-align:left;overflow:hidden;
   box-shadow:0 0 0 3px var(--edge),inset 3px 3px 0 var(--panel-hi),inset -3px -3px 0 var(--panel-lo)}
 .skill canvas{grid-row:span 2;width:30px;height:30px;image-rendering:pixelated}
@@ -300,6 +306,7 @@ h3:first-child{margin-top:0}
           <div id="welcome" hidden><h2>다시 왔군요!</h2><div id="wCrew"></div><p id="wText"></p><b id="wGold"></b><button id="wBtn" class="btn">고마워, 얘들아!</button></div>
         </div>
       </div>
+      <div id="guide" hidden><span class="gs" id="gStep"></span><b id="gText"></b><span class="gbar"><i id="gFill"></i></span><button id="gSkip" aria-label="가이드 닫기" title="가이드 닫기">×</button></div>
       <div class="skills" id="skills"></div>
       <div class="sub">
         <span>클릭 피해 <b id="sClick">1</b></span>
@@ -330,7 +337,7 @@ h3:first-child{margin-top:0}
         <section id="tab-tools" hidden><div id="toolList" class="list"></div><p id="toolFoot" class="foot"></p></section>
         <section id="tab-quest" hidden><div id="dailyBox"></div><h3>의뢰 게시판</h3><div id="questList" class="list"></div><p id="questFoot" class="foot"></p></section>
         <section id="tab-relics" hidden><div id="relicSum" class="sumbox"></div><div id="relicGrid"></div></section>
-        <section id="tab-ach" hidden><div id="hatBox"></div><div id="achSum" class="sumbox"></div><div id="achList" class="list"></div></section>
+        <section id="tab-ach" hidden><div id="petBox"></div><div id="hatBox"></div><div id="achSum" class="sumbox"></div><div id="achList" class="list"></div></section>
         <section id="tab-res" hidden><div id="resHead"></div><div id="resList" class="list"></div></section>
         <section id="tab-rebirth" hidden><div id="rebirthBox"></div></section>
       </div>
@@ -608,7 +615,9 @@ const ACH=[
  ['res10','연구소장','연구 레벨 합계 10',()=>Object.values(S.res).reduce((a,b)=>a+b,0)>=10,'tablet','#9fd8ff'],
  ['merch5','단골손님','떠돌이 상인에게 5번 사기',()=>S.merchBuys>=5,'coin','#4fb07a'],
  ['proj30','철벽 방어','보스 투사체 30개 막기',()=>S.projBlocks>=30,'shield','#8fd0ff'],
- ['dex12','보스 도감 완성','보스 12종류 모두 쓰러뜨리기',()=>Object.keys(S.bossLog).length>=12,'crown','#ff7a4a']
+ ['dex12','보스 도감 완성','보스 12종류 모두 쓰러뜨리기',()=>Object.keys(S.bossLog).length>=12,'crown','#ff7a4a'],
+ ['pet1','첫 친구','펫 처음 부화시키기',()=>Object.keys(S.pets).length>=1,'heart','#f09ab0'],
+ ['pet8','펫 박사','펫 8종류 모두 모으기',()=>Object.keys(S.pets).length>=8,'clover','#ffd23a']
 ].map(a=>({id:a[0],name:a[1],desc:a[2],cond:a[3],icon:shapeIcon(a[4],a[5]),off:shapeIcon(a[4],a[5],true)}));
 const ACH_BONUS=.02;
 const TYPEMULT={plain:1,ore:3,gem:12,chest:40,boss:12};
@@ -626,7 +635,7 @@ const buffs={frenzy:0,rush:0,midas:0,stop:0,fever:0};
 // 콤보 MAX 상태로 FEVER_HITS번 더 치면 피버 타임
 const FEVER_HITS=20,FEVER_DUR=8;
 function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,sfxOff:false,musicOff:false,vibeOff:false,buyAmt:1,
-  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,bossLog:{},projBlocks:0,last:Date.now()};}
+  ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,bossLog:{},projBlocks:0,pets:{},pet:'',eggs:0,eggProg:0,guide:0,last:Date.now()};}
 
 function recalc(){
   const r={click:0,dps:0,gold:0,crit:0,boss:0,luck:0};
@@ -639,12 +648,12 @@ function recalc(){
   D.helperDps=HELPERS.map((h,i)=>{const l=S.helpers[i];let m=Math.pow(2,msCount(l));if(S.up['tr'+i])m*=2;if(S.up['el'+i])m*=3;return h.p*l*m*(1+r.dps+.4*bl('crew'))*Math.pow(1.25,rl('crew'))*Math.pow(2,bl('army'))*cry*ach*rush;});
   D.dps=D.helperDps.reduce((a,b)=>a+b,0);
   D.click=(pick*(1+r.click+.6*bl('sharp'))*Math.pow(1.25,rl('pick'))*Math.pow(2,bl('twin'))*cry*ach+D.dps*glove)*(buffs.frenzy>0?7:1)*(buffs.fever>0?3:1);
-  D.critChance=(S.up.clover?.08:0)+r.crit+.05*bl('eagle');
+  D.critChance=(S.up.clover?.08:0)+r.crit+.05*bl('eagle')+.02*pv('cat');
   D.critMult=S.up.eye?12:6;
-  D.goldMult=(1+r.gold)*(S.up.map1?1.5:1)*(S.up.map2?2:1)*(buffs.midas>0?3:1)*(1+.5*bl('greed'))*(1+.03*(Object.keys(S.hats).length-1))*Math.pow(1.2,rl('gold'));
+  D.goldMult=(1+r.gold)*(S.up.map1?1.5:1)*(S.up.map2?2:1)*(buffs.midas>0?3:1)*(1+.5*bl('greed'))*(1+.03*(Object.keys(S.hats).length-1))*Math.pow(1.2,rl('gold'))*(1+.1*pv('hamster'));
   D.ach=ach;
-  D.luck=(1+r.luck)*(1+.3*bl('leaf'))*(1+.1*rl('luckres'))*(S.up.det1?1.6:1)*(S.up.det2?1.6:1);
-  D.bossDur=30+r.boss+6*bl('sand')+2*rl('boss');D.r=r;D.cry=cry;D.tier=tier;
+  D.luck=(1+r.luck)*(1+.15*pv('butterfly'))*(1+.3*bl('leaf'))*(1+.1*rl('luckres'))*(S.up.det1?1.6:1)*(S.up.det2?1.6:1);
+  D.bossDur=30+r.boss+6*bl('sand')+2*rl('boss')+2*pv('turtle');D.r=r;D.cry=cry;D.tier=tier;
 }
 
 /* ---------- textures ---------- */
@@ -767,7 +776,7 @@ const sfx={
 };
 
 /* ---------- game runtime ---------- */
-let bfx=null,pierce=false,merch=null,merchT=150,shopOffers=null,weak=null,weakT=2,cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
+let batAcc=0,bfx=null,pierce=false,merch=null,merchT=150,shopOffers=null,weak=null,weakT=2,cur=null,farmN=0,farmT=0,bossLeft=0,moleY=0,vy=0,swing=0,shakeT=0,quakeT=0,hop=0,flash=0,dpsAcc=0,dpsT=0,nug=null,nugT=35,hintLeft=5,hiddenAt=0,combo=0,comboIdle=9,feverCharge=0;
 const comboMult=()=>1+combo/100;
 const parts=[];
 const fx=$('#fx');
@@ -798,7 +807,7 @@ function popup(text,cls,lx,ly){
 function burstAt(wx,wy,n,cols,spd,grav,size){
   for(let i=0;i<n;i++)parts.push({x:wx+(Math.random()-.5)*4,y:wy,vx:(Math.random()-.5)*spd,vy:-Math.random()*spd*.9-10,life:.5+Math.random()*.5,max:1,col:cols[i%cols.length],g:grav,s:size||1});
 }
-function damage(a){if(!cur)return;if(bfx&&bfx.on&&!pierce)a*=bfx.g==='shield'?.15:.5;cur.hp-=a;if(cur.hp<=0)breakBlock();}
+function damage(a){if(!cur)return;if(cur.type==='boss')a*=1+.2*pv('dragon');if(bfx&&bfx.on&&!pierce)a*=bfx.g==='shield'?.15:.5;cur.hp-=a;if(cur.hp<=0)breakBlock();}
 function hit(mult){
   mult=mult||1;ensureAudio();S.clicks++;
   combo=Math.min(100,combo+5);comboIdle=0;
@@ -845,6 +854,8 @@ function breakBlock(){
   if(b.type==='gem')popup('보석!','tag',COLX+12,SURF-18);
   sfx.brk();if(big)sfx.coin();
   rollRelic(b);
+  if((b.type==='boss'&&(Math.random()<.3||(!S.eggs&&!Object.keys(S.pets).length)))||(b.type==='chest'&&Math.random()<.05))gainEgg();
+  if(S.eggs>0&&++S.eggProg>=EGG_BLOCKS)hatchEgg();
   if((b.type==='boss'&&b.d>=99)||(b.type==='chest'&&b.d>=100&&Math.random()<.25))gainFossils(b.type==='boss'?1+Math.floor((b.d-99)/25):1);
   if(b.type==='boss'){sfx.win();buzz([40,30,70]);toast(`${bossName(b.d)} 격파! +${fmt(g)} 골드`,'win');S.pendingBless++;setTimeout(offerBless,700);}
   if(!S.farm){
@@ -863,7 +874,7 @@ function bossFail(){
 function retryBoss(){S.farm=false;spawn();}
 function useSkill(i){
   const sk=SKILLS[i];if(!sk||!cur||S.maxDepth<sk.need||(S.cd[sk.id]||0)>0)return;
-  ensureAudio();S.cd[sk.id]=sk.cd*Math.pow(.85,bl('rhythm'));S.skillUses++;
+  ensureAudio();S.cd[sk.id]=sk.cd*Math.pow(.85,bl('rhythm'))*Math.pow(.92,pv('owl'));S.skillUses++;
   if(sk.id==='quake'){
     S.quakes++;quakeT=.7;sfx.quake();
     let rem=D.dps*30+D.click*30,n=0;
@@ -895,6 +906,7 @@ function update(dt){
   if(D.dps>0){const a=D.dps*dt;dpsAcc+=a;damage(a);}
   dpsT+=dt;
   if(dpsT>=1){dpsT=0;if(dpsAcc>0){popup(fmt(dpsAcc),'dps',COLX+12+(Math.random()-.5)*10,SURF+18);hop=.16;}dpsAcc=0;}
+  if(pv('bat')&&cur){batAcc+=pv('bat')*dt;if(batAcc>=1){batAcc-=1;const a=D.click*.5;popup(fmt(a),'dps',COLX+2,SURF+4);damage(a);}}
   if(cur&&cur.type==='boss'&&buffs.stop<=0){bossLeft-=dt;if(bossLeft<=0)bossFail();}
   if(S.farm){farmT+=dt;if(farmT>3&&D.dps*D.bossDur*.8>=hpOf(S.depth)*BAL.boss*GIMMICK[gimOf(S.depth)].hp){farmT=0;retryBoss();toast('동료들이 충분히 강해졌어요. 보스에 다시 도전!','win');}}
   for(const k in S.cd)if(S.cd[k]>0)S.cd[k]=Math.max(0,S.cd[k]-dt);
@@ -919,7 +931,7 @@ function update(dt){
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)parts.splice(i,1);}
   if(parts.length>260)parts.splice(0,parts.length-260);
   nugT-=dt;
-  if(!nug&&nugT<=0){const left=Math.random()<.5;nug={x:Math.round(left?6+Math.random()*32:90+Math.random()*28),y:Math.round(10+Math.random()*60),life:13};nugT=(55+Math.random()*60)*(S.up.sense?.6:1)*Math.pow(.7,bl('magnet'));sfx.nug();}
+  if(!nug&&nugT<=0){const left=Math.random()<.5;nug={x:Math.round(left?6+Math.random()*32:90+Math.random()*28),y:Math.round(10+Math.random()*60),life:13};nugT=(55+Math.random()*60)*(S.up.sense?.6:1)*Math.pow(.7,bl('magnet'))*Math.pow(.88,pv('firefly'));sfx.nug();}
   if(nug){nug.life-=dt;if(nug.life<=0)nug=null;}
 }
 
@@ -1025,6 +1037,11 @@ function draw(t){
     if(Math.floor(t*2)%2){ctx.fillStyle='#1b1424';ctx.fillRect(mx+5,SURF-27,7,9);ctx.fillStyle='#fff6e0';ctx.fillRect(mx+6,SURF-26,5,7);
       ctx.fillStyle='#e5533f';ctx.fillRect(mx+8,SURF-25,1,3);px(mx+8,SURF-21,'#e5533f');}
   }
+  // pet
+  if(S.pet&&PETS_BY[S.pet]){const bob=Math.round(Math.sin(t*3)*2),pxp=44+Math.round(Math.sin(t*1.3)*2);
+    if(S.pet==='firefly'&&Math.floor(t*4)%2){ctx.globalAlpha=.35;ctx.fillStyle='#fff3a6';ctx.fillRect(pxp-1,SURF-31+bob,10,10);ctx.globalAlpha=1;}
+    if(S.pet==='cat')ctx.globalAlpha=.75+.2*Math.sin(t*2);
+    ctx.drawImage(PETS_BY[S.pet].spr,pxp,SURF-30+bob);ctx.globalAlpha=1;}
   // mole
   const blink=(t%3.4)<.12;
   ctx.drawImage(moleSpr(blink,t),56,SURF-16);
@@ -1166,6 +1183,7 @@ const MERCH=[
  {id:'relic',n:'수상한 유물 상자',d:'지금 지층의 유물 하나',sec:300,g:200,ic:['tablet','#c9b48a'],ok:()=>relicPool(S.depth).length>0,buy:()=>grantRelic(S.depth)},
  {id:'fossil',n:'화석 꾸러미',d:'화석 2개',sec:400,g:300,ic:['trilo','#c9b48a'],ok:()=>S.maxDepth>=100,buy:()=>gainFossils(2)},
  {id:'cool',n:'시원한 박하사탕',d:'모든 스킬 대기시간 초기화',sec:45,g:30,ic:['flake','#9fd8ff'],ok:()=>S.maxDepth>=25&&SKILLS.some(k=>(S.cd[k.id]||0)>0),buy:()=>{S.cd={};}},
+ {id:'egg',n:'수상한 알',d:'블록을 캐다 보면 부화해요',sec:300,g:200,ic:['orb','#f6e6c8'],buy:()=>gainEgg()},
  {id:'quest',n:'의뢰 대행 쪽지',d:'아직 못 끝낸 의뢰 하나를 바로 완료',sec:60,g:40,ic:['tablet','#62e0b4'],ok:()=>S.quests.some(q=>!questDone(q)),
   buy:()=>{const q=S.quests.find(q=>!questDone(q));if(q)q.start=(S[q.k]||0)-q.need;}}
 ];
@@ -1200,6 +1218,76 @@ function closeShop(){
   if(S.pendingBless)setTimeout(offerBless,300);
 }
 setInterval(syncShop,250);
+
+
+/* ---------- pets: hatch eggs by mining, one pet follows the mole ---------- */
+const EGG_BLOCKS=120;
+const PETS=[
+ {id:'firefly',n:'반딧불',d:l=>`반짝이는 금맥이 ${Math.round((1-Math.pow(.88,l))*100)}% 더 자주`,rows:["...KK...","..KWWK..",".KWYYWK.",".KYYYYK.","..KHHK..","..KhhK..","...KK...","........"]},
+ {id:'bat',n:'아기 박쥐',d:l=>`초당 ${l}번 대신 쪼아요 (클릭 피해 50%)`,rows:["K......K","KK.KK.KK","KBKBBKBK","KBBEEBBK",".KBBBBK.","..KPPK..","...KK...","........"]},
+ {id:'dragon',n:'꼬마 용',d:l=>`보스에게 주는 피해 +${l*20}%`,rows:["..KK....",".KTTK.K.","KTWETKTK","KTTTTTTK",".KTRRTK.",".KtTTtK.","..K..K..","........"]},
+ {id:'turtle',n:'돌 거북',d:l=>`보스 시간 +${l*2}초`,rows:["........","..KKKK..",".KGSSGKK","KGGGGGKT","KGSGGSKE",".KKKKKK.",".TK..TK.","........"]},
+ {id:'hamster',n:'황금 햄스터',d:l=>`골드 +${l*10}%`,rows:["........",".KK..KK.",".KHKKHK.","KHHHHHHK","KHEHHEHK","KHHPPHHK",".KHHHHK.","..KKKK.."]},
+ {id:'cat',n:'유령 고양이',d:l=>`치명타 확률 +${l*2}%p`,rows:["K......K","KWK..KWK","KWWWWWWK","KWEWWEWK","KWWPWWWK",".KWWWWK.",".KWKKWK.","..K..K.."]},
+ {id:'butterfly',n:'수정 나비',d:l=>`광석·보석·상자 +${l*15}%`,rows:["KK....KK","KCK..KCK","KCCKKCCK","KCWVVWCK",".KCVVCK.","KCCKKCCK","KCK..KCK",".K....K."]},
+ {id:'owl',n:'시간 올빼미',d:l=>`스킬 대기시간 -${Math.round((1-Math.pow(.92,l))*100)}%`,rows:["K......K","KNK..KNK","KNNNNNNK","KYENNYEK","KNNOONNK",".KNNNNK.",".KDDDDK.","..K..K.."]}
+];
+const PET_MAX=5;
+PETS.forEach(p=>{p.spr=sprite(p.rows);p.sil=sprite(p.rows,Object.fromEntries(Object.keys(PAL).map(k=>[k,'#3a2d3a'])));});
+const PETS_BY=Object.fromEntries(PETS.map(p=>[p.id,p]));
+SPR.egg=shapeIcon('orb','#f6e6c8');
+function pv(id){return S&&S.pet===id?(S.pets[id]||0):0;}
+function gainEgg(){
+  S.eggs++;achDirty=true;
+  popup('알!','tag',COLX+12,SURF-40);
+  toast(`수상한 알을 얻었어요! 블록 ${EGG_BLOCKS}개를 캐면 부화해요.`,'relic',SPR.egg);
+}
+function hatchEgg(){
+  S.eggs--;S.eggProg=0;achDirty=true;
+  const p=PETS[Math.random()*PETS.length|0],lv=S.pets[p.id]||0;
+  if(!lv){S.pets[p.id]=1;if(!S.pet)S.pet=p.id;banner('알이 부화했어요!',`새 펫: ${p.n}`);toast(`새 펫 ${p.n}! ${p.d(1)} · 업적 탭에서 데리고 다닐 펫을 골라요.`,'win',p.spr);}
+  else if(lv<PET_MAX){S.pets[p.id]=lv+1;toast(`${p.n}가 또 나왔어요! Lv ${lv+1} · ${p.d(lv+1)}`,'win',p.spr);}
+  else{const g=Math.max(goldOf(S.depth,'plain')*100,incomePerSec()*180);addGold(g);toast(`${p.n}는 이미 최고 레벨! 대신 ${fmt(g)} 골드`,'win',p.spr);}
+  recalc();sfx.relic();buzz([30,30,60]);
+  burstAt(44+4,S.depth*B-26,16,['#f6e6c8','#fff6a0','#ffffff'],120,200,1);
+}
+let petHead=null;
+const petTitle=()=>`펫 · ${Object.keys(S.pets).length}/${PETS.length}`+(S.eggs?` · 알 ${S.eggs}개 (부화까지 블록 ${S.eggProg}/${EGG_BLOCKS})`:' · 보스와 보물 상자가 가끔 알을 줘요');
+function buildPets(){
+  const box=$('#petBox');box.innerHTML='';
+  petHead=el('h3',null,petTitle());box.appendChild(petHead);
+  const g=el('div','rgrid');
+  PETS.forEach(p=>{
+    const lv=S.pets[p.id]||0,on=S.pet===p.id,c=el('button','relic hat'+(lv?'':' no')+(on?' on':''));
+    c.disabled=!lv;c.append(clone(lv?p.spr:p.sil,'pi'),el('b',null,lv?`${p.n} Lv${lv}`:'???'),el('small',null,on?`함께하는 중 · ${p.d(lv)}`:lv?p.d(lv):'알에서 태어나요'));
+    c.addEventListener('click',()=>{S.pet=on?'':p.id;recalc();sfx.buy();buildAch();});
+    g.appendChild(c);
+  });
+  box.appendChild(g);
+}
+
+/* ---------- beginner guide ---------- */
+const GUIDE=[
+ ['화면을 눌러 블록을 10번 캐 보세요 (스페이스바도 돼요)',()=>S.clicks>=10],
+ ['동료 탭에서 지렁이를 고용하세요. 알아서 캐 줘요',()=>S.helpers[0]>=1],
+ ['도구 탭에서 돌 곡괭이를 사세요',()=>!!S.up.pick0],
+ ['빠르게 연타해서 콤보 게이지를 끝까지 채우세요',()=>S.maxCombo>=1],
+ ['25m의 첫 보스를 쓰러뜨리세요. ✚ 약점을 노려요!',()=>S.bosses>=1],
+ ['의뢰 탭에서 의뢰 하나를 끝내고 보상을 받으세요',()=>S.questsDone>=1]
+];
+function checkGuide(silent){
+  if(!S)return;
+  let moved=false;
+  while(S.guide<GUIDE.length&&GUIDE[S.guide][1]()){
+    S.guide++;moved=true;
+    if(silent!==true){const g=Math.max(goldOf(S.depth,'plain')*20,30);addGold(g);
+      toast(S.guide>=GUIDE.length?`가이드 완료! +${fmt(g)} 골드 · 이제 마음껏 파 보세요!`:`잘했어요! +${fmt(g)} 골드`,'win',SPR.nug);sfx.coin();}
+  }
+  const show=S.guide<GUIDE.length;$('#guide').hidden=!show;
+  if(show){$('#gStep').textContent=`가이드 ${S.guide+1}/${GUIDE.length}`;$('#gText').textContent=GUIDE[S.guide][0];$('#gFill').style.width=(S.guide/GUIDE.length*100)+'%';}
+  return moved;
+}
+$('#gSkip').addEventListener('click',()=>{S.guide=GUIDE.length;checkGuide(true);toast('가이드를 닫았어요. 환생 탭의 게임 방법에서 다시 볼 수 있어요.','');});
 
 /* ---------- quests & daily reward ---------- */
 const QUESTS=[
@@ -1433,6 +1521,7 @@ function checkAch(){
 }
 function buildAch(){
   achDirty=false;
+  buildPets();
   const hb=$('#hatBox');hb.innerHTML='';
   const nh=HATS.filter(h=>S.hats[h.id]).length;
   hb.appendChild(el('h3',null,`두더지 꾸미기 · ${nh}/${HATS.length} · 골드 +${(nh-1)*3}%`));
@@ -1642,6 +1731,7 @@ function updatePanel(){
   updateTools();
   updateQuests();
   updateRes();
+  if(curTab==='ach'&&petHead)petHead.textContent=petTitle();
   if(relicDirty)buildRelics();
   if(achDirty&&curTab==='ach')buildAch();
   if(curTab==='rebirth')updateRebirth();
@@ -1761,6 +1851,8 @@ const CODE_TAG='MOLE1:';
 let importUntil=0;
 function normalize(src){
   const n=Object.assign(defaults(),src||{});
+  if(src&&src.guide===undefined&&(src.clicks||0)>50)n.guide=GUIDE.length;
+  if(!n.pets||typeof n.pets!=='object')n.pets={};
   n.helpers=HELPERS.map((_,i)=>(Array.isArray(n.helpers)&&+n.helpers[i])||0);
   ['up','relics','ach','cd','bless','hats','res','bossLog'].forEach(k=>{if(!n[k]||typeof n[k]!=='object')n[k]={};});
   n.hats.basic=1;if(!n.daily||typeof n.daily!=='object')n.daily={day:'',streak:0};
@@ -1839,9 +1931,9 @@ function start(data){
   if(S.clicks>=5){hintLeft=0;$('#hint').hidden=true;}
   if(src&&src.last)offline((Date.now()-src.last)/1000,.5+.1*rl('night'),'창을 닫아 둔');
   if(S.depth===0&&S.clicks===0)banner('두더지 광산','0m · 표토층');
-  setInterval(updateHud,100);setInterval(updatePanel,250);setInterval(save,15000);setInterval(checkAch,1000);
+  setInterval(updateHud,100);setInterval(updatePanel,250);setInterval(save,15000);setInterval(checkAch,1000);setInterval(checkGuide,500);checkGuide(true);
   if(window.__mmExpose)window.__mm={get S(){return S;},D,buffs,BAL,draw,update,hit,useSkill,buyHelper,costOf,maxBuy,recalc,crystalGain,UPS,HELPERS,
-    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,get bfx(){return bfx;},blockProj,get merch(){return merch;},set merchT(v){merchT=v;},get shopOffers(){return shopOffers;},openShop,buyOffer,closeShop,buyRes,RES,gainFossils,resCost,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
+    get cur(){return cur;},get combo(){return combo;},get weak(){return weak;},get nug(){return nug;},get blessOpts(){return blessOpts;},pickBless,hitWeak,catchNug,claimQuest,questDone,retryBoss,get bfx(){return bfx;},gainEgg,hatchEgg,PETS,checkGuide,blockProj,get merch(){return merch;},set merchT(v){merchT=v;},get shopOffers(){return shopOffers;},openShop,buyOffer,closeShop,buyRes,RES,gainFossils,resCost,onRebirth,checkAch,buyUp:id=>{const u=UPS.find(x=>x.id===id);if(u&&S.gold>=u.cost&&!S.up[id]&&u.req()){S.gold-=u.cost;S.up[id]=1;recalc();return true;}return false;}};
   updateHud();
   if(window.claude&&window.claude.hot&&window.claude.hot.snapshot)window.claude.hot.snapshot(serialize);
   last=performance.now();requestAnimationFrame(frame);
