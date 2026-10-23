@@ -34,19 +34,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--f-ko);font-size:16
 button{font:inherit;color:inherit}
 .num{font-family:var(--f-pix);font-variant-numeric:tabular-nums}
 .px{background:var(--panel);box-shadow:0 0 0 3px var(--edge),inset 3px 3px 0 var(--panel-hi),inset -3px -3px 0 var(--panel-lo)}
-.pixicon canvas,canvas.pi{image-rendering:pixelated;display:block}
+.pixicon canvas,canvas.pi,.pixicon img,img.pi{image-rendering:pixelated;display:block}
 
 #app{height:100%;max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:14px;padding-block:14px}
 
 /* header */
 .top{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;margin-right:auto}
-.brand canvas{width:44px;height:44px}
+.brand canvas,.brand img{width:44px;height:44px}
 .brand h1{margin:0;font-weight:400;font-size:28px;letter-spacing:.02em;color:var(--gold);text-shadow:3px 3px 0 var(--edge)}
 .brand p{margin:0;color:var(--muted);font-size:14px}
 .stats{display:flex;gap:12px;flex-wrap:wrap}
 .stat{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--panel);box-shadow:0 0 0 3px var(--edge),inset 3px 3px 0 var(--panel-hi),inset -3px -3px 0 var(--panel-lo)}
-.stat canvas{width:24px;height:24px}
+.stat canvas,.stat img{width:24px;height:24px}
 .stat b{font-family:var(--f-pix);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
 .stat.gold b{color:var(--gold)}
 .stat .lbl{color:var(--muted);font-size:15px}
@@ -123,7 +123,7 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .list{display:grid;gap:10px}
 .row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;background:var(--row);box-shadow:0 0 0 2px var(--edge)}
 .row .ico{position:relative;width:48px;height:48px;background:#1a121b;box-shadow:inset 2px 2px 0 #0c070d;display:grid;place-items:center}
-.row .ico canvas{width:36px;height:36px}
+.row .ico canvas,.row .ico img{width:36px;height:36px}
 .row .ico .lv{position:absolute;right:-4px;bottom:-6px;font-family:var(--f-pix);font-size:11px;padding:0 4px;background:var(--edge);color:var(--gold)}
 .row .nm{font-size:17px;line-height:1.2}
 .row .ds{font-size:13px;color:var(--muted)}
@@ -136,7 +136,7 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .row.done{box-shadow:0 0 0 2px var(--edge),inset 0 0 0 2px var(--mint)}
 .qbar{height:8px;margin-top:6px;background:#0d080e;box-shadow:0 0 0 2px var(--edge)}
 .qbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#62e0b4,#8fd0ff)}
-.card .big canvas.pi{width:32px;height:32px}
+.card .big canvas.pi,.card .big img.pi{width:32px;height:32px}
 #bless,#welcome,#shop{position:absolute;inset:0;z-index:3;display:grid;align-content:center;justify-items:center;gap:8px;padding:10px;background:#07040ae6;cursor:default}
 #bless h2,#welcome h2,#shop h2{margin:0;font-weight:400;font-size:clamp(17px,3.2vw,28px);color:var(--gold);text-shadow:3px 3px 0 var(--edge);text-align:center}
 #bless p,#welcome p,#shop p{margin:0;color:var(--muted);font-size:clamp(11px,1.6vw,14px);text-align:center}
@@ -144,7 +144,7 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .bcard{display:grid;justify-items:center;align-content:start;gap:4px;padding:clamp(6px,1.2vw,12px) 4px;border:0;cursor:pointer;background:var(--row);text-align:center;
   box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px #4a3550;animation:cardin .3s steps(4) both}
 .bcard:hover,.bcard:focus-visible{box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px var(--gold);transform:translateY(-3px)}
-.bcard canvas{width:clamp(24px,4.5vw,40px);height:clamp(24px,4.5vw,40px);image-rendering:pixelated}
+.bcard canvas,.bcard img{width:clamp(24px,4.5vw,40px);height:clamp(24px,4.5vw,40px);image-rendering:pixelated}
 .bcard b{font-weight:400;font-size:clamp(13px,2vw,18px);line-height:1.1}
 .bcard small{font-size:clamp(10px,1.5vw,13px);color:var(--muted);line-height:1.2}
 .bcard em{font-style:normal;font-family:var(--f-pix);font-size:10px;color:var(--mint)}
@@ -156,7 +156,7 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .bcard.sold{opacity:.45}
 #welcome b{font-family:var(--f-pix);font-size:clamp(20px,4vw,34px);color:var(--gold);text-shadow:3px 3px 0 var(--edge)}
 #wCrew{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-#wCrew canvas{width:clamp(22px,4vw,34px);height:clamp(22px,4vw,34px);image-rendering:pixelated}
+#wCrew canvas,#wCrew img{width:clamp(22px,4vw,34px);height:clamp(22px,4vw,34px);image-rendering:pixelated}
 .relic.hat{border:0;cursor:pointer;font:inherit;color:inherit}
 .relic.hat:disabled{cursor:default}
 .relic.hat.on{box-shadow:0 0 0 2px var(--edge),inset 0 0 0 2px var(--gold)}
@@ -168,7 +168,7 @@ h3{margin:14px 0 8px;font-weight:400;font-size:15px;color:var(--muted);letter-sp
 h3:first-child{margin-top:0}
 .rgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .relic{display:grid;justify-items:center;gap:4px;padding:8px 4px;background:var(--row);box-shadow:0 0 0 2px var(--edge);text-align:center}
-.relic canvas{width:36px;height:36px}
+.relic canvas,.relic img{width:36px;height:36px}
 .relic b{font-weight:400;font-size:14px;line-height:1.15}
 .relic small{font-size:12px;color:var(--mint)}
 .relic.no b,.relic.no small{color:var(--dim)}
@@ -177,7 +177,7 @@ h3:first-child{margin-top:0}
 .card{padding:14px;background:var(--row);box-shadow:0 0 0 2px var(--edge);display:grid;gap:10px}
 .card p{margin:0;font-size:15px;color:var(--muted)}
 .card .big{display:flex;align-items:center;gap:10px;font-size:18px}
-.card .big canvas{width:32px;height:32px}
+.card .big canvas,.card .big img{width:32px;height:32px}
 .card .big b{font-family:var(--f-pix);color:var(--crys);font-size:22px}
 .kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:15px;color:var(--muted)}
 .kv b{font-family:var(--f-pix);color:var(--text);font-weight:400;font-size:14px;text-align:right}
@@ -201,13 +201,13 @@ h3:first-child{margin-top:0}
 #guide button{border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:18px;padding:0 4px}
 .skill{position:relative;display:grid;grid-template-columns:auto auto;align-items:center;gap:0 8px;padding:6px 18px 6px 8px;border:0;cursor:pointer;background:var(--panel);text-align:left;overflow:hidden;
   box-shadow:0 0 0 3px var(--edge),inset 3px 3px 0 var(--panel-hi),inset -3px -3px 0 var(--panel-lo)}
-.skill canvas{grid-row:span 2;width:30px;height:30px;image-rendering:pixelated}
+.skill canvas,.skill img{grid-row:span 2;width:30px;height:30px;image-rendering:pixelated}
 .skill b{font-weight:400;font-size:15px;line-height:1.1}
 .skill small{font-size:12px;color:var(--muted)}
 .skill kbd{position:absolute;right:5px;top:3px;font-family:var(--f-pix);font-size:10px;color:var(--dim)}
 .skill .cdv{position:absolute;inset:0;background:#07040ab0;transform-origin:right;pointer-events:none}
 .skill:disabled{cursor:not-allowed}
-.skill.locked canvas{opacity:.3}
+.skill.locked canvas,.skill.locked img{opacity:.3}
 .skill.locked b{color:var(--dim)}
 .skill.ready{box-shadow:0 0 0 3px var(--edge),inset 0 0 0 3px var(--gold)}
 .skill:active:not(:disabled){transform:translateY(2px)}
@@ -217,16 +217,16 @@ h3:first-child{margin-top:0}
 #combo .cm i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f6c64b,#ff7a4a)}
 #combo.max b{color:var(--gold)}
 .ach{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;background:var(--row);box-shadow:0 0 0 2px var(--edge)}
-.ach canvas{width:36px;height:36px}
+.ach canvas,.ach img{width:36px;height:36px}
 .ach b{display:block;font-weight:400;font-size:16px}
 .ach small{font-size:13px;color:var(--muted)}
 .ach em{font-style:normal;font-family:var(--f-pix);font-size:11px;color:var(--mint)}
 .ach.no b{color:var(--dim)}
-.ach.no canvas{opacity:.3}
+.ach.no canvas,.ach.no img{opacity:.3}
 .ach.no em{color:var(--dim)}
 #toasts{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;align-items:flex-end;z-index:20;pointer-events:none;max-width:min(360px,calc(100vw - 32px))}
 .toast{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:15px;background:#0c070df2;box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px #4a3550;animation:tin .25s steps(4)}
-.toast canvas{width:30px;height:30px;flex:none}
+.toast canvas,.toast img{width:30px;height:30px;flex:none}
 .toast.win{box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px var(--gold)}
 .toast.warn{box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px var(--ruby)}
 .toast.relic{box-shadow:0 0 0 3px var(--edge),inset 0 0 0 2px var(--mint)}
@@ -250,20 +250,27 @@ h3:first-child{margin-top:0}
   .hbtns{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
   .skills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .skill{grid-template-columns:auto;justify-items:center;text-align:center;padding:6px 4px}
-  .skill canvas{grid-row:auto;width:24px;height:24px}
+  .skill canvas,.skill img{grid-row:auto;width:24px;height:24px}
   .skill b{font-size:14px}
   .skill small{font-size:11px}
   .tabs button{font-size:14px}
   .tabs .num{display:none}
   .row{grid-template-columns:40px minmax(0,1fr) auto;gap:8px}
   .row .ico{width:40px;height:40px}
-  .row .ico canvas{width:30px;height:30px}
+  .row .ico canvas,.row .ico img{width:30px;height:30px}
   .row .buy{min-width:72px;padding:6px 8px}
 }
 @media (prefers-reduced-motion:reduce){
   #fx span{animation-duration:.5s}
   #hint{animation:none}
 }
+
+#app img{image-rendering:pixelated;display:block;max-width:none}
+/* 화면 일부가 바뀔 때 페이지 전체를 다시 계산하지 않게 영역을 나눠요 */
+.screen,.hud{contain:layout paint}
+#fx{contain:strict}
+.tabbody{contain:content}
+.toast{contain:layout paint}
 </style>
 
 </head>
@@ -361,7 +368,10 @@ function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15
 function hash2(a,b){let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263))|0;h=Math.imul(h^(h>>>13),1274126177);return(h^(h>>>16))>>>0;}
 function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function shade(hex,f){const n=parseInt(hex.slice(1),16);const k=v=>Math.max(0,Math.min(255,Math.round(v*f)));return '#'+((1<<24)|(k(n>>16&255)<<16)|(k(n>>8&255)<<8)|k(n&255)).toString(16).slice(1);}
-function clone(src,cls){const c=mk(src.width,src.height);c.getContext('2d').drawImage(src,0,0);if(cls)c.className=cls;return c;}
+// 아이콘은 <img>로 넣어요. 작은 <canvas>를 많이 넣으면 폰에서 화면 레이어가 수십 개로 늘어 버벅여요.
+const ICON_URL=new WeakMap();
+function clone(src,cls){let u=ICON_URL.get(src);if(!u){u=src.toDataURL();ICON_URL.set(src,u);}
+  const im=new Image(src.width,src.height);im.src=u;im.alt='';im.draggable=false;if(cls)im.className=cls;return im;}
 function flip(src){const c=mk(src.width,src.height),x=c.getContext('2d');x.translate(src.width,0);x.scale(-1,1);x.drawImage(src,0,0);return c;}
 const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
 function fmt(n){
@@ -1471,7 +1481,7 @@ function toast(msg,kind,icon){
   const box=$('#toasts'),t=document.createElement('div');t.className='toast '+(kind||'');
   if(icon)t.appendChild(clone(icon,'pi'));
   const s=document.createElement('span');s.textContent=msg;t.appendChild(s);box.appendChild(t);
-  while(box.children.length>4)box.firstChild.remove();
+  const maxT=innerWidth<520?3:4;while(box.children.length>maxT)box.firstChild.remove();
   setTimeout(()=>t.classList.add('out'),3800);setTimeout(()=>t.remove(),4200);
 }
 let lastHud={};
