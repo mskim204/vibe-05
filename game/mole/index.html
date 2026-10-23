@@ -374,9 +374,18 @@ function clone(src,cls){let u=ICON_URL.get(src);if(!u){u=src.toDataURL();ICON_UR
   const im=new Image(src.width,src.height);im.src=u;im.alt='';im.draggable=false;if(cls)im.className=cls;return im;}
 function flip(src){const c=mk(src.width,src.height),x=c.getContext('2d');x.translate(src.width,0);x.scale(-1,1);x.drawImage(src,0,0);return c;}
 const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+// 한국식 숫자 단위 (1.23만, 4.56억 ...). 설정에서 영어식(K·M·B)으로 바꿀 수 있어요
+let numEn=false;
+const KO_UNIT=['','만','억','조','경','해','자','양','구','간','정','재','극'];
 function fmt(n){
   if(!isFinite(n))return '∞';
   if(n<1000)return (n<10&&n%1)?n.toFixed(1):String(Math.floor(n));
+  if(!numEn){
+    if(n<1e4)return String(Math.floor(n));
+    const e=Math.floor(Math.log10(n)/4);
+    if(e<KO_UNIT.length){const v=n/Math.pow(1e4,e);return (v<10?v.toFixed(2):v<100?v.toFixed(1):Math.floor(v))+KO_UNIT[e];}
+    return n.toExponential(2).replace('+','');
+  }
   const e=Math.floor(Math.log10(n)/3);
   if(e<SUF.length){const v=n/Math.pow(1000,e);return (v<10?v.toFixed(2):v<100?v.toFixed(1):Math.floor(v))+SUF[e];}
   return n.toExponential(2).replace('+','');
@@ -649,7 +658,7 @@ const D={};
 const buffs={frenzy:0,rush:0,midas:0,stop:0,fever:0};
 // 콤보 MAX 상태로 FEVER_HITS번 더 치면 피버 타임
 const FEVER_HITS=20,FEVER_DUR=8;
-function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,sfxOff:false,musicOff:false,vibeOff:false,buyAmt:1,
+function defaults(){return{gold:0,totalGold:0,depth:0,runMax:0,maxDepth:0,helpers:HELPERS.map(()=>0),up:{},relics:{},crystals:0,prestiges:0,farm:false,clicks:0,blocks:0,muted:false,sfxOff:false,musicOff:false,vibeOff:false,numEn:false,buyAmt:1,
   ach:{},cd:{},bosses:0,nuggets:0,crits:0,chests:0,quakes:0,maxCombo:0,fevers:0,ores:0,hired:0,skillUses:0,questsDone:0,blessTotal:0,bless:{},pendingBless:0,quests:[],daily:{day:'',streak:0},weakHits:0,hat:'basic',hats:{basic:1},fossils:0,fossilsTotal:0,res:{},merchBuys:0,bossLog:{},projBlocks:0,pets:{},pet:'',eggs:0,eggProg:0,guide:0,bossTry:{d:-1,n:0},last:Date.now()};}
 
 function recalc(){
@@ -1112,7 +1121,7 @@ BLESS.forEach(b=>{b.icon=shapeIcon(b.shape,b.c);});
 function bl(id){return (S&&S.bless&&S.bless[id])||0;}
 let blessOpts=null;
 function offerBless(){
-  if(blessOpts||!S.pendingBless)return;
+  if(blessOpts||shopOffers||!S.pendingBless)return;
   const pool=BLESS.filter(b=>!b.leg||Math.random()<.12),opts=[];
   while(opts.length<3+rl('cards')&&pool.length)opts.push(pool.splice(Math.random()*pool.length|0,1)[0]);
   blessOpts=opts;
@@ -1209,7 +1218,7 @@ const MERCH=[
 ];
 MERCH.forEach(o=>{o.icon=shapeIcon(o.ic[0],o.ic[1]);});
 function openShop(){
-  if(shopOffers||!merch)return;ensureAudio();
+  if(shopOffers||!merch||blessOpts)return;ensureAudio();
   const pool=MERCH.filter(o=>!o.ok||o.ok());shopOffers=[];
   while(shopOffers.length<3&&pool.length){const o=pool.splice(Math.random()*pool.length|0,1)[0];
     shopOffers.push({o,price:Math.ceil(Math.max(goldOf(S.depth,'plain')*o.g,incomePerSec()*o.sec)),sold:false});}
@@ -1709,6 +1718,8 @@ function buildRebirth(){
     const b=el('button','btn');b.id='tg-'+k;b.addEventListener('click',()=>{if(S.muted&&k!=='vibeOff'){S.muted=false;S.sfxOff=S.musicOff=true;S[k]=false;}else S[k]=!S[k];ensureAudio();syncControls();if(k==='sfxOff'&&!S[k])sfx.coin();if(k==='vibeOff'&&!S[k])buzz(40);});
     rb.tg[k]=[b,n];tg.appendChild(b);});
   set.append(tg);
+  rb.num=el('button','btn');rb.num.id='numBtn';rb.num.addEventListener('click',()=>{S.numEn=!S.numEn;toolSig='';questSig='';resSig='';rb.sig='';lastHud={};syncControls();updatePanel();updateHud();});
+  set.append(rb.num);
   set.append(el('p',null,'게임은 이 브라우저에 자동 저장돼요. 창을 닫아 둔 동안에도 동료들이 최대 8시간까지 절반 속도로 캐요. (연구소의 밤샘 근무로 더 올릴 수 있어요)'),rb.instP,rb.inst,rb.reset);
   box.appendChild(set);rebirthBuilt=true;syncControls();
 }
@@ -1770,6 +1781,8 @@ function setTab(t){
 function syncControls(){
   document.querySelectorAll('.amt button').forEach(b=>b.setAttribute('aria-pressed',String(String(S.buyAmt)===b.dataset.amt)));
   $('#mute').setAttribute('aria-pressed',String(!!S.muted));$('#mute').textContent=S.muted?'×':'♪';
+  numEn=!!S.numEn;
+  if(rb.num)rb.num.textContent=S.numEn?'숫자 표시: 영어식 (1.23M)':'숫자 표시: 한국식 (123만)';
   if(rb.tg)Object.entries(rb.tg).forEach(([k,[b,n]])=>{const on=!S[k]&&(k==='vibeOff'||!S.muted);b.textContent=`${n} ${on?'켜짐':'꺼짐'}`;b.setAttribute('aria-pressed',String(on));b.classList.toggle('danger',!on);});
 }
 
