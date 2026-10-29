@@ -56,6 +56,7 @@
   <p>폰을 기울이면 구슬이 그쪽으로 굴러가요.<br>많이 기울일수록 빨라져요. 구멍⭐까지 가 보세요!</p>
   <div class="levels" id="levels"></div>
   <button class="btn" id="startBtn">▶ 시작</button>
+  <button class="btn sub" id="buzzBtn">📳 진동 테스트</button>
   <p id="err"></p>
   <p style="font-size:13px;opacity:.6">시작하면 그때 들고 있는 자세가 '평평한 기준'이 돼요.<br>아이폰은 제어 센터에서 <b>세로 화면 고정</b>을 켜 두면 좋아요.</p>
 </div>
@@ -286,9 +287,9 @@
   let lastBump = 0;
   function bump(speed) {
     const now = performance.now();
-    if (now - lastBump < 90) return;   // 벽을 따라 미끄러질 때 계속 떨리지 않게
+    if (now - lastBump < 120) return;   // 벽을 따라 미끄러질 때 계속 떨리지 않게
     lastBump = now;
-    if (navigator.vibrate) { try { navigator.vibrate(Math.round(Math.min(60, 12 + speed * 5))); } catch (e) {} }
+    if (navigator.vibrate) { try { navigator.vibrate(Math.round(Math.min(100, 40 + speed * 6))); } catch (e) {} }
     else if (iosSwitch) iosSwitch.click();
   }
 
@@ -419,6 +420,17 @@
 
   // ---------- 버튼 ----------
   $('startBtn').onclick = begin;
+  // 이 폰에서 진동이 되는지 바로 확인
+  $('buzzBtn').onclick = () => {
+    let msg;
+    if (navigator.vibrate) {
+      let ok = false; try { ok = navigator.vibrate(300); } catch (e) {}
+      msg = ok ? '부르르 느껴졌나요? 안 느껴지면 폰 설정에서 진동 세기와 무음 모드를 확인해 주세요.'
+               : '진동이 막혀 있어요. 크롬이나 삼성 인터넷으로 열어 주세요.';
+    } else if (iosSwitch) { iosSwitch.click(); msg = '아이폰은 짧게 \'톡\' 하고 울려요 (iOS 18 이상).'; }
+    else msg = '이 브라우저는 진동을 지원하지 않아요. 크롬이나 삼성 인터넷으로 열어 주세요.';
+    $('err').textContent = msg;
+  };
   $('againBtn').onclick = begin;
   $('nextBtn').onclick = () => { level = Math.min(LEVELS.length - 1, level + 1); save('maze-level', level); buildLevel(); layout(); begin(); };
   const toMenu = () => { state = 'menu'; show('result', false); show('pause', false); resetBall(); renderLevels(); show('menu', true); };
