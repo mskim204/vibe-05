@@ -48,7 +48,7 @@ var EMOJI = { '떡볶이': '🌶️', '치킨': '🍗', '마라탕': '🍲', '�
 
 if (PAGE === 'result') {
   loadResults();
-  setInterval(loadResults, 5000); // 5초마다 새로고침
+  setInterval(loadResults, 10000); // 10초마다 새로고침
 } else {
   setupVote();
 }
@@ -109,12 +109,14 @@ function loadResults() {
         var row = document.createElement('div');
         row.className = 'row';
         row.innerHTML = '<div class="top"><span></span><b></b></div><div class="bar"><div></div></div>';
-        row.querySelector('span').textContent = EMOJI[x.name] + ' ' + x.name;
         bars.appendChild(row);
       });
     }
     list.forEach(function (x, i) {
       var row = bars.children[i];
+      // 1등 보기에 왕관 (같은 표면 모두, 0표일 땐 없음)
+      var crown = x.count > 0 && x.count === max ? ' 👑' : '';
+      row.querySelector('span').textContent = EMOJI[x.name] + ' ' + x.name + crown;
       row.querySelector('b').textContent = x.count + '표';
       row.querySelector('.bar div').style.width = (x.count / max * 100) + '%';
     });
