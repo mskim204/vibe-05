@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2a1a0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>기울기 미로</title>
+<style>
+  :root { --wood:#c08a4e; --dark:#2a1a0e; --cream:#fff3d6; --gold:#f6c64b; --red:#e0563b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--dark); overflow:hidden; overscroll-behavior:none; touch-action:none; }
+  body { font-family:-apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color:var(--cream); user-select:none; -webkit-user-select:none;
+         display:flex; flex-direction:column; height:100dvh;
+         padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #hud { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 14px 6px; flex:none; }
+  #hud .box { background:#0006; border-radius:10px; padding:6px 10px; min-width:84px; text-align:center; }
+  #hud .lbl { font-size:11px; opacity:.7; }
+  #hud .val { font-size:20px; font-weight:bold; font-variant-numeric:tabular-nums; }
+  #time .val { color:var(--gold); }
+  #lvl { font-size:14px; font-weight:bold; }
+  #back { color:var(--cream); text-decoration:none; font-size:22px; padding:4px 6px; }
+  #board { flex:1; position:relative; min-height:0; }
+  canvas { position:absolute; display:block; }
+  .ov { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:24px;
+        background:#1a0f08e8; z-index:10; text-align:center; }
+  .ov.hide { display:none; }
+  .ov h1 { margin:0; font-size:34px; color:var(--gold); }
+  .ov p { margin:0; line-height:1.6; opacity:.9; max-width:320px; }
+  .btn { font:inherit; font-size:20px; font-weight:bold; border:0; border-radius:12px; padding:14px 28px; min-width:220px;
+         background:var(--gold); color:var(--dark); cursor:pointer; }
+  .btn.sub { background:#ffffff22; color:var(--cream); font-size:16px; padding:10px 20px; }
+  .levels { display:flex; gap:8px; }
+  .levels button { font:inherit; font-size:15px; border:2px solid #ffffff33; background:#ffffff11; color:var(--cream); border-radius:10px; padding:8px 12px; cursor:pointer; }
+  .levels button.on { border-color:var(--gold); background:#f6c64b33; color:var(--gold); font-weight:bold; }
+  .levels small { display:block; font-size:11px; font-weight:normal; opacity:.8; }
+  #count { font-size:96px; font-weight:bold; color:var(--gold); background:transparent; pointer-events:none; }
+  #resTime { font-size:44px; font-weight:bold; color:var(--gold); font-variant-numeric:tabular-nums; }
+  #resNew { color:var(--red); font-weight:bold; font-size:20px; }
+  #err { color:#ffb3a3; font-size:14px; }
+  #turn { z-index:20; display:none; }
+  @media (orientation: landscape) and (max-height: 600px) { #turn { display:flex; } }
+</style>
+</head>
+<body>
+<div id="hud">
+  <a id="back" href="./" aria-label="뒤로">←</a>
+  <div class="box" id="time"><div class="lbl">시간</div><div class="val">0.00</div></div>
+  <div id="lvl">보통</div>
+  <div class="box" id="best"><div class="lbl">최고 기록</div><div class="val">--</div></div>
+</div>
+<div id="board"><canvas id="bg"></canvas><canvas id="fg"></canvas></div>
+
+<div class="ov" id="menu">
+  <h1>🟤 기울기 미로</h1>
+  <p>폰을 기울이면 구슬이 그쪽으로 굴러가요.<br>많이 기울일수록 빨라져요. 구멍⭐까지 가 보세요!</p>
+  <div class="levels" id="levels"></div>
+  <button class="btn" id="startBtn">▶ 시작</button>
+  <p id="err"></p>
+  <p style="font-size:13px;opacity:.6">시작하면 그때 들고 있는 자세가 '평평한 기준'이 돼요.<br>아이폰은 제어 센터에서 <b>세로 화면 고정</b>을 켜 두면 좋아요.</p>
+</div>
+
+<div class="ov hide" id="count">3</div>
+
+<div class="ov hide" id="result">
+  <h1>🎉 골인!</h1>
+  <div id="resTime">0.00초</div>
+  <div id="resNew"></div>
+  <p id="resBest"></p>
+  <button class="btn" id="againBtn">↻ 다시 하기</button>
+  <button class="btn sub" id="nextBtn">다음 단계 →</button>
+  <button class="btn sub" id="menuBtn">단계 고르기</button>
+</div>
+
+<div class="ov hide" id="pause">
+  <h1>⏸ 잠깐 멈춤</h1>
+  <button class="btn" id="resumeBtn">계속하기</button>
+  <button class="btn sub" id="pauseMenuBtn">처음으로</button>
+</div>
+
+<div class="ov" id="turn">
+  <h1>📱</h1>
+  <p>폰을 <b>세로</b>로 들어 주세요.<br>이 게임은 세로 화면에서만 돼요.</p>
+</div>
+
+<script>
+(() => {
+  // ---------- 단계 ----------
+  const LEVELS = [
+    { name:'쉬움',   cols:6,  rows:9,  seed:11 },
+    { name:'보통',   cols:8,  rows:12, seed:27 },
+    { name:'어려움', cols:10, rows:15, seed:53 },
+  ];
+  let level = loadNum('maze-level', 1);
+  if (!(level >= 0 && level < LEVELS.length)) level = 1;
+
+  // ---------- 저장 (실패해도 게임은 그대로) ----------
+  function loadNum(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : Number(v); } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+  const bestKey = i => 'maze-best-' + i;
+  const getBest = i => { const v = loadNum(bestKey(i), 0); return v > 0 ? v : null; };
+
+  // ---------- 미로 만들기 (단계마다 같은 미로) ----------
+  function rng(seed) {
+    return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  function makeMaze(cols, rows, seed) {
+    const rnd = rng(seed);
+    // 각 칸의 벽: [위, 오른쪽, 아래, 왼쪽]
+    const cells = Array.from({ length: cols * rows }, () => [1, 1, 1, 1]);
+    const seen = new Uint8Array(cols * rows);
+    const DIRS = [[0, -1, 0, 2], [1, 0, 1, 3], [0, 1, 2, 0], [-1, 0, 3, 1]];
+    const stack = [0]; seen[0] = 1;
+    while (stack.length) {
+      const i = stack[stack.length - 1], x = i % cols, y = (i / cols) | 0;
+      const opts = DIRS.filter(([dx, dy]) => { const nx = x + dx, ny = y + dy;
+        return nx >= 0 && ny >= 0 && nx < cols && ny < rows && !seen[ny * cols + nx]; });
+      if (!opts.length) { stack.pop(); continue; }
+      const [dx, dy, a, b] = opts[(rnd() * opts.length) | 0], j = (y + dy) * cols + x + dx;
+      cells[i][a] = 0; cells[j][b] = 0; seen[j] = 1; stack.push(j);
+    }
+    return cells;
+  }
+
+  // 벽을 사각형 목록으로 (단위: 칸)
+  const WALL = 0.14, R = 0.28;
+  let maze, cols, rows, walls;
+  function buildLevel() {
+    const L = LEVELS[level];
+    cols = L.cols; rows = L.rows; maze = makeMaze(cols, rows, L.seed);
+    walls = [];
+    const h = WALL / 2;
+    const add = (x0, y0, x1, y1) => walls.push({ x0, y0, x1, y1 });
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const w = maze[y * cols + x];
+      if (w[0]) add(x - h, y - h, x + 1 + h, y + h);
+      if (w[3]) add(x - h, y - h, x + h, y + 1 + h);
+      if (y === rows - 1 && w[2]) add(x - h, y + 1 - h, x + 1 + h, y + 1 + h);
+      if (x === cols - 1 && w[1]) add(x + 1 - h, y - h, x + 1 + h, y + 1 + h);
+    }
+    document.getElementById('lvl').textContent = L.name;
+    showBest();
+  }
+
+  // ---------- 화면 ----------
+  const boardEl = document.getElementById('board');
+  const bg = document.getElementById('bg'), fg = document.getElementById('fg');
+  const bctx = bg.getContext('2d'), fctx = fg.getContext('2d');
+  let cell = 30, ox = 0, oy = 0, dpr = 1, cw = 0, ch = 0;
+
+  function layout() {
+    const W = boardEl.clientWidth, H = boardEl.clientHeight;
+    if (!W || !H) return;
+    const pad = 12;
+    cell = Math.max(8, Math.floor(Math.min((W - pad * 2) / cols, (H - pad * 2) / rows)));
+    cw = cell * cols + pad * 2; ch = cell * rows + pad * 2;
+    ox = pad; oy = pad;
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    for (const c of [bg, fg]) {
+      c.width = Math.round(cw * dpr); c.height = Math.round(ch * dpr);
+      c.style.width = cw + 'px'; c.style.height = ch + 'px';
+      c.style.left = Math.round((W - cw) / 2) + 'px'; c.style.top = Math.round((H - ch) / 2) + 'px';
+    }
+    drawBoard();
+  }
+
+  function drawBoard() {
+    const c = bctx;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, cw, ch);
+    // 나무 판
+    const g = c.createLinearGradient(0, 0, cw, ch);
+    g.addColorStop(0, '#d9a568'); g.addColorStop(1, '#b07a40');
+    c.fillStyle = g; roundRect(c, 0, 0, cw, ch, 14); c.fill();
+    c.strokeStyle = '#00000014'; c.lineWidth = 1;
+    for (let y = 6; y < ch; y += 9) { c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(cw * .3, y + 3, cw * .6, y - 3, cw, y + 1); c.stroke(); }
+    c.save(); c.translate(ox, oy);
+    // 출발 칸
+    c.fillStyle = '#ffffff30'; c.fillRect(2, 2, cell - 4, cell - 4);
+    c.fillStyle = '#fff8'; c.font = `bold ${Math.round(cell * .26)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('출발', cell / 2, cell * .82);
+    // 골인 구멍
+    const gx = (cols - .5) * cell, gy = (rows - .5) * cell, gr = cell * .36;
+    const hg = c.createRadialGradient(gx, gy - gr * .3, gr * .1, gx, gy, gr);
+    hg.addColorStop(0, '#000'); hg.addColorStop(1, '#3b220f');
+    c.fillStyle = hg; c.beginPath(); c.arc(gx, gy, gr, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#f6c64b'; c.lineWidth = Math.max(2, cell * .06); c.stroke();
+    c.fillStyle = '#f6c64b'; c.font = `${Math.round(cell * .34)}px sans-serif`; c.fillText('⭐', gx, gy);
+    // 벽 (그림자 → 본체)
+    for (const pass of [0, 1]) {
+      c.fillStyle = pass ? '#5a3417' : '#0000004d';
+      const s = pass ? 0 : cell * .06;
+      for (const w of walls) c.fillRect(w.x0 * cell + s, w.y0 * cell + s, (w.x1 - w.x0) * cell, (w.y1 - w.y0) * cell);
+    }
+    c.fillStyle = '#8a5a30';
+    for (const w of walls) c.fillRect(w.x0 * cell, w.y0 * cell, (w.x1 - w.x0) * cell, Math.max(1, (w.y1 - w.y0) * cell * .35));
+    c.restore();
+  }
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  function drawBall() {
+    const c = fctx;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, cw, ch);
+    const x = ox + ball.x * cell, y = oy + ball.y * cell, r = R * cell * ball.scale;
+    if (r <= 0) return;
+    c.fillStyle = '#00000055';
+    c.beginPath(); c.ellipse(x + r * .25, y + r * .35, r, r * .9, 0, 0, Math.PI * 2); c.fill();
+    const g = c.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(.35, '#c9ccd4'); g.addColorStop(1, '#4b4f5a');
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---------- 센서 ----------
+  const tilt = { b: 0, g: 0, has: false };     // 최근 기울기 (도)
+  const base = { b: 0, g: 0 };                 // 시작할 때 자세 = 평평한 기준
+  const input = { x: 0, y: 0 };                // 부드럽게 만든 기울기 (-1 ~ 1)
+  const keys = {};
+  function onOrient(e) {
+    if (e.beta == null || e.gamma == null) return;
+    tilt.b = e.beta; tilt.g = e.gamma; tilt.has = true;
+  }
+  const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  async function enableSensor() {
+    const D = window.DeviceOrientationEvent;
+    if (D && typeof D.requestPermission === 'function') {   // 아이폰/아이패드
+      let r = 'denied';
+      try { r = await D.requestPermission(); } catch (e) {}
+      // 아이폰은 허용해야만 센서가 와요. 다른 폰은 결과와 상관없이 그냥 들어 봐요.
+      if (r !== 'granted' && IOS) throw new Error('denied');
+      const M = window.DeviceMotionEvent;
+      if (M && typeof M.requestPermission === 'function') M.requestPermission().catch(() => {});
+    }
+    window.addEventListener('deviceorientation', onOrient);
+  }
+  addEventListener('keydown', e => { keys[e.key] = true; });
+  addEventListener('keyup', e => { keys[e.key] = false; });
+
+  function readInput(dt) {
+    let tx = 0, ty = 0;
+    if (tilt.has) {
+      const clamp = v => Math.max(-60, Math.min(60, v));
+      tx = Math.sin(clamp(tilt.g - base.g) * Math.PI / 180);
+      ty = Math.sin(clamp(tilt.b - base.b) * Math.PI / 180);
+    }
+    // 컴퓨터에서 시험할 때: 방향키
+    if (keys.ArrowLeft) tx = -.5; if (keys.ArrowRight) tx = .5;
+    if (keys.ArrowUp) ty = -.5;   if (keys.ArrowDown) ty = .5;
+    const k = 1 - Math.exp(-dt * 18);
+    input.x += (tx - input.x) * k; input.y += (ty - input.y) * k;
+  }
+
+  // ---------- 물리 ----------
+  const ball = { x: .5, y: .5, vx: 0, vy: 0, scale: 1 };
+  const ACC = 34, FRICTION = 1.6, MAXV = 14, DEAD = .03;
+  function step(dt) {
+    let ax = Math.abs(input.x) > DEAD ? input.x : 0, ay = Math.abs(input.y) > DEAD ? input.y : 0;
+    ball.vx += ax * ACC * dt; ball.vy += ay * ACC * dt;
+    const f = Math.exp(-FRICTION * dt);
+    ball.vx *= f; ball.vy *= f;
+    const sp = Math.hypot(ball.vx, ball.vy);
+    if (sp > MAXV) { ball.vx *= MAXV / sp; ball.vy *= MAXV / sp; }
+    // 벽 뚫림 방지: 조금씩 나눠서 움직임
+    const n = Math.max(1, Math.ceil(Math.hypot(ball.vx, ball.vy) * dt / (R * .3)));
+    const sdt = dt / n;
+    let hit = 0;
+    for (let i = 0; i < n; i++) {
+      ball.x += ball.vx * sdt; ball.y += ball.vy * sdt;
+      hit = Math.max(hit, collide());
+    }
+    if (hit > 1.2) bump(hit);
+  }
+  // ---------- 진동 ----------
+  // 안드로이드: navigator.vibrate / 아이폰(iOS 18 이상): 스위치 체크박스를 누를 때 나는 '톡' 진동을 빌려 씀
+  const iosSwitch = (() => {
+    if (!IOS) return null;
+    const l = document.createElement('label'), i = document.createElement('input');
+    i.type = 'checkbox'; i.setAttribute('switch', ''); l.appendChild(i);
+    l.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0;pointer-events:none';
+    document.body.appendChild(l); return l;
+  })();
+  let lastBump = 0;
+  function bump(speed) {
+    const now = performance.now();
+    if (now - lastBump < 90) return;   // 벽을 따라 미끄러질 때 계속 떨리지 않게
+    lastBump = now;
+    if (navigator.vibrate) { try { navigator.vibrate(Math.round(Math.min(60, 12 + speed * 5))); } catch (e) {} }
+    else if (iosSwitch) iosSwitch.click();
+  }
+
+  // 벽에 닿으면 벽 쪽으로 가던 속도를 0으로 → 멈춤
+  function collide() {
+    let hardest = 0;
+    for (const w of walls) {
+      const cx = Math.max(w.x0, Math.min(ball.x, w.x1)), cy = Math.max(w.y0, Math.min(ball.y, w.y1));
+      let dx = ball.x - cx, dy = ball.y - cy, d2 = dx * dx + dy * dy;
+      if (d2 >= R * R) continue;
+      let d = Math.sqrt(d2), nx, ny;
+      if (d > 1e-6) { nx = dx / d; ny = dy / d; }
+      else {   // 중심이 벽 안: 가장 가까운 면으로 밀어냄
+        const l = ball.x - w.x0, r = w.x1 - ball.x, t = ball.y - w.y0, b = w.y1 - ball.y, m = Math.min(l, r, t, b);
+        nx = m === l ? -1 : m === r ? 1 : 0; ny = m === t ? -1 : m === b ? 1 : 0; d = -m;
+      }
+      ball.x += nx * (R - d); ball.y += ny * (R - d);
+      const vn = ball.vx * nx + ball.vy * ny;
+      if (vn < 0) { ball.vx -= vn * nx; ball.vy -= vn * ny; hardest = Math.max(hardest, -vn); }
+    }
+    return hardest;
+  }
+
+  // ---------- 게임 진행 ----------
+  const $ = id => document.getElementById(id);
+  const timeEl = $('time').querySelector('.val'), bestEl = $('best').querySelector('.val');
+  let state = 'menu';        // menu | count | play | pause | sink | done
+  let elapsed = 0, last = 0, sinkT = 0;
+  const fmt = s => s >= 60 ? `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}` : s.toFixed(2);
+  function showBest() { const b = getBest(level); bestEl.textContent = b ? fmt(b) : '--'; }
+  function show(id, on) { $(id).classList.toggle('hide', !on); }
+
+  function renderLevels() {
+    const box = $('levels'); box.innerHTML = '';
+    LEVELS.forEach((L, i) => {
+      const b = document.createElement('button');
+      const best = getBest(i);
+      b.innerHTML = `${L.name}<small>${best ? '최고 ' + fmt(best) + '초' : '기록 없음'}</small>`;
+      if (i === level) b.className = 'on';
+      b.onclick = () => { level = i; save('maze-level', i); buildLevel(); layout(); resetBall(); drawBall(); renderLevels(); };
+      box.appendChild(b);
+    });
+  }
+
+  function resetBall() { Object.assign(ball, { x: .5, y: .5, vx: 0, vy: 0, scale: 1 }); input.x = input.y = 0; elapsed = 0; timeEl.textContent = '0.00'; }
+
+  let sensorOn = false;
+  async function begin() {
+    $('err').textContent = '';
+    if (!sensorOn) {
+      try { await enableSensor(); sensorOn = true; }
+      catch (e) { $('err').textContent = '센서 권한이 필요해요. 시작을 다시 누르고 "허용"을 골라 주세요.'; return; }
+    }
+    lockPortrait(); keepAwake();
+    show('menu', false); show('result', false); show('pause', false);
+    resetBall(); drawBall();
+    countdown();
+  }
+
+  function countdown() {
+    state = 'count';
+    const el = $('count'); let n = 3;
+    el.textContent = n; show('count', true);
+    const tick = () => {
+      if (state !== 'count') return;
+      n--;
+      if (n > 0) { el.textContent = n; setTimeout(tick, 700); return; }
+      el.textContent = 'GO!';
+      base.b = tilt.b; base.g = tilt.g;   // 지금 자세가 평평한 기준
+      state = 'play'; last = performance.now();
+      setTimeout(() => show('count', false), 400);
+    };
+    setTimeout(tick, 700);
+  }
+
+  function finish() {
+    state = 'done';
+    const t = Math.round(elapsed * 100) / 100, old = getBest(level);
+    const isNew = !old || t < old;
+    if (isNew) save(bestKey(level), t);
+    $('resTime').textContent = fmt(t) + '초';
+    $('resNew').textContent = isNew ? (old ? `🏆 신기록! (${(old - t).toFixed(2)}초 단축)` : '🏆 첫 기록!') : '';
+    $('resBest').textContent = isNew ? '' : `최고 기록 ${fmt(old)}초`;
+    $('nextBtn').style.display = level < LEVELS.length - 1 ? '' : 'none';
+    showBest(); show('result', true);
+    if (navigator.vibrate) { try { navigator.vibrate([60, 40, 120]); } catch (e) {} }
+    else if (iosSwitch) { iosSwitch.click(); setTimeout(() => iosSwitch.click(), 120); }
+  }
+
+  function pauseGame() { if (state === 'play' || state === 'count') { state = 'pause'; show('count', false); show('pause', true); } }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
+    readInput(dt);
+    if (state === 'play') {
+      elapsed += dt;
+      step(dt);
+      timeEl.textContent = fmt(elapsed);
+      const gx = cols - .5, gy = rows - .5;
+      if (Math.hypot(ball.x - gx, ball.y - gy) < .3) { state = 'sink'; sinkT = 0; ball.vx = ball.vy = 0; }
+    } else if (state === 'sink') {   // 구멍으로 쏙
+      sinkT += dt;
+      ball.x += (cols - .5 - ball.x) * Math.min(1, dt * 12); ball.y += (rows - .5 - ball.y) * Math.min(1, dt * 12);
+      ball.scale = Math.max(0, 1 - sinkT / .35);
+      if (sinkT > .4) finish();
+    }
+    drawBall();
+  }
+
+  // ---------- 세로 고정 / 화면 꺼짐 방지 ----------
+  async function lockPortrait() {
+    try {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen && !IOS) await el.requestFullscreen();
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('portrait');
+    } catch (e) { /* 지원 안 하는 폰은 가로 안내 화면으로 대신 */ }
+  }
+  let wake = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) {}
+  }
+  const landscape = matchMedia('(orientation: landscape) and (max-height: 600px)');
+  const onOrientChange = () => { if (landscape.matches) pauseGame(); setTimeout(layout, 120); };
+  landscape.addEventListener ? landscape.addEventListener('change', onOrientChange) : landscape.addListener(onOrientChange);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); else if (state !== 'menu') keepAwake(); });
+  addEventListener('resize', () => layout());
+
+  // ---------- 버튼 ----------
+  $('startBtn').onclick = begin;
+  $('againBtn').onclick = begin;
+  $('nextBtn').onclick = () => { level = Math.min(LEVELS.length - 1, level + 1); save('maze-level', level); buildLevel(); layout(); begin(); };
+  const toMenu = () => { state = 'menu'; show('result', false); show('pause', false); resetBall(); renderLevels(); show('menu', true); };
+  $('menuBtn').onclick = toMenu;
+  $('pauseMenuBtn').onclick = toMenu;
+  $('resumeBtn').onclick = () => { show('pause', false); countdown(); };
+  document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+  buildLevel(); renderLevels(); layout(); resetBall();
+  requestAnimationFrame(t => { last = t; frame(t); });
+})();
+</script>
+</body>
+</html>
