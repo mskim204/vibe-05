@@ -272,8 +272,26 @@
       ball.x += ball.vx * sdt; ball.y += ball.vy * sdt;
       hit = Math.max(hit, collide());
     }
-    if (hit > 3.5 && navigator.vibrate) { try { navigator.vibrate(Math.min(30, hit * 3)); } catch (e) {} }
+    if (hit > 1.2) bump(hit);
   }
+  // ---------- 진동 ----------
+  // 안드로이드: navigator.vibrate / 아이폰(iOS 18 이상): 스위치 체크박스를 누를 때 나는 '톡' 진동을 빌려 씀
+  const iosSwitch = (() => {
+    if (!IOS) return null;
+    const l = document.createElement('label'), i = document.createElement('input');
+    i.type = 'checkbox'; i.setAttribute('switch', ''); l.appendChild(i);
+    l.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0;pointer-events:none';
+    document.body.appendChild(l); return l;
+  })();
+  let lastBump = 0;
+  function bump(speed) {
+    const now = performance.now();
+    if (now - lastBump < 90) return;   // 벽을 따라 미끄러질 때 계속 떨리지 않게
+    lastBump = now;
+    if (navigator.vibrate) { try { navigator.vibrate(Math.round(Math.min(60, 12 + speed * 5))); } catch (e) {} }
+    else if (iosSwitch) iosSwitch.click();
+  }
+
   // 벽에 닿으면 벽 쪽으로 가던 속도를 0으로 → 멈춤
   function collide() {
     let hardest = 0;
@@ -357,6 +375,7 @@
     $('nextBtn').style.display = level < LEVELS.length - 1 ? '' : 'none';
     showBest(); show('result', true);
     if (navigator.vibrate) { try { navigator.vibrate([60, 40, 120]); } catch (e) {} }
+    else if (iosSwitch) { iosSwitch.click(); setTimeout(() => iosSwitch.click(), 120); }
   }
 
   function pauseGame() { if (state === 'play' || state === 'count') { state = 'pause'; show('count', false); show('pause', true); } }
